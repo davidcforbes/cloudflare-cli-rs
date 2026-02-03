@@ -39,11 +39,65 @@ A fast, type-safe Rust CLI for managing Cloudflare DNS, zones, and cache from th
 
 ## Installation
 
-### From Release Binary
+### From Release Binary (Recommended)
+
+Download the latest release for your platform from the [Releases page](https://github.com/davidcforbes/cfad/releases).
+
+#### Windows
+
+```powershell
+# Download and extract
+Invoke-WebRequest -Uri "https://github.com/davidcforbes/cfad/releases/latest/download/cfad-0.2.0-x86_64-pc-windows-msvc.zip" -OutFile cfad.zip
+Expand-Archive cfad.zip
+Move-Item cfad\cfad.exe $env:USERPROFILE\.cargo\bin\
+
+# Verify installation
+cfad --version
+```
+
+#### Linux (Ubuntu/Debian)
 
 ```bash
-# Copy to cargo bin directory
-cp target/release/cfad ~/.cargo/bin/
+# Download and install
+curl -LO https://github.com/davidcforbes/cfad/releases/latest/download/cfad-0.2.0-x86_64-unknown-linux-gnu.tar.gz
+tar xzf cfad-0.2.0-x86_64-unknown-linux-gnu.tar.gz
+sudo mv cfad /usr/local/bin/
+
+# Verify installation
+cfad --version
+```
+
+#### Linux (Static binary - works everywhere)
+
+```bash
+# Download and install (no glibc dependency)
+curl -LO https://github.com/davidcforbes/cfad/releases/latest/download/cfad-0.2.0-x86_64-unknown-linux-musl.tar.gz
+tar xzf cfad-0.2.0-x86_64-unknown-linux-musl.tar.gz
+sudo mv cfad /usr/local/bin/
+
+# Verify installation
+cfad --version
+```
+
+#### macOS (Intel)
+
+```bash
+# Download and install
+curl -LO https://github.com/davidcforbes/cfad/releases/latest/download/cfad-0.2.0-x86_64-apple-darwin.tar.gz
+tar xzf cfad-0.2.0-x86_64-apple-darwin.tar.gz
+sudo mv cfad /usr/local/bin/
+
+# Verify installation
+cfad --version
+```
+
+#### macOS (Apple Silicon - M1/M2/M3)
+
+```bash
+# Download and install
+curl -LO https://github.com/davidcforbes/cfad/releases/latest/download/cfad-0.2.0-aarch64-apple-darwin.tar.gz
+tar xzf cfad-0.2.0-aarch64-apple-darwin.tar.gz
+sudo mv cfad /usr/local/bin/
 
 # Verify installation
 cfad --version
@@ -52,10 +106,26 @@ cfad --version
 ### From Source
 
 ```bash
-git clone https://github.com/yourusername/cfad
+# Clone repository
+git clone https://github.com/davidcforbes/cfad
 cd cfad
+
+# Build and install
 cargo build --release
-cp target/release/cfad ~/.cargo/bin/
+cargo install --path .
+
+# Verify installation
+cfad --version
+```
+
+### Using Cargo
+
+```bash
+# Install directly from source (once published to crates.io)
+cargo install cfad
+
+# Verify installation
+cfad --version
 ```
 
 ---

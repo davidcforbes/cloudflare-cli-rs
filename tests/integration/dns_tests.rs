@@ -2,7 +2,7 @@ use cfad::api::dns::{CreateDnsRecord, UpdateDnsRecord};
 use cfad::client::CloudflareClient;
 use cfad::config::AuthMethod;
 use cfad::ops::dns;
-use wiremock::matchers::{method, path, path_regex, query_param};
+use wiremock::matchers::{method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 async fn create_test_client(mock_server: &MockServer) -> CloudflareClient {
