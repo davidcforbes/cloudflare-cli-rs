@@ -134,7 +134,14 @@ jobs:
         if: matrix.target == 'x86_64-unknown-linux-musl'
         run: |
           sudo apt-get update
-          sudo apt-get install -y musl-tools
+          sudo apt-get install -y musl-tools musl-dev pkg-config libssl-dev
+
+      - name: Set OpenSSL vendored for musl
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          echo "OPENSSL_STATIC=yes" >> $GITHUB_ENV
+          echo "OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-musl" >> $GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=/usr/include" >> $GITHUB_ENV
 
       - name: Cache cargo registry
         uses: Swatinem/rust-cache@ad397744b0d591a723ab90405b7247fac0e6b8db # v2
