@@ -512,7 +512,7 @@ cfad --quiet cache purge example.com --all
 ## Output Formats
 
 ### Table (Default)
-Beautiful formatted tables with colors
+Beautifully formatted tables with colors
 
 ### JSON
 Machine-readable output for scripting:
@@ -562,25 +562,25 @@ default_zone = "staging-example.com"
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         CFAD CLI (v0.2.0)                       │
-│                                                                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │   Config     │  │  Command     │  │   Output     │          │
-│  │   Manager    │  │   Parser     │  │  Formatter   │          │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘          │
+│                                                                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
+│  │   Config     │  │  Command     │  │   Output     │           │
+│  │   Manager    │  │   Parser     │  │  Formatter   │           │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘           │
 │         │                 │                  │                  │
 │         └─────────┬───────┴──────────────────┘                  │
-│                   │                                              │
+│                   │                                             │
 │         ┌─────────▼──────────────────────┐                      │
 │         │   CloudflareClient             │                      │
 │         │  (Async HTTP + Rate Limiting)  │                      │
 │         └─────────┬──────────────────────┘                      │
-│                   │                                              │
+│                   │                                             │
 │    ┌──────────────┼──────────────┬──────────────┐               │
 │    │              │              │              │               │
-│  ┌─▼───────┐  ┌──▼─────┐  ┌────▼────┐  ┌──────▼──────┐        │
-│  │  DNS    │  │  Zone  │  │  Cache  │  │   Config    │        │
-│  │ Module  │  │ Module │  │ Module  │  │   Module    │        │
-│  └─────────┘  └────────┘  └─────────┘  └─────────────┘        │
+│  ┌─▼───────┐  ┌──▼─────┐  ┌────▼────┐  ┌──────▼──────┐          │
+│  │  DNS    │  │  Zone  │  │  Cache  │  │   Config    │          │
+│  │ Module  │  │ Module │  │ Module  │  │   Module    │          │
+│  └─────────┘  └────────┘  └─────────┘  └─────────────┘          │
 └─────────────────────────────────────────────────────────────────┘
                             │
                             ▼
