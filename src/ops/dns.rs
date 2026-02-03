@@ -36,9 +36,9 @@ pub async fn get_record(
     let endpoint = format!("/zones/{}/dns_records/{}", zone_id, record_id);
     let response: CfResponse<DnsRecord> = client.get(&endpoint).await?;
 
-    response.result.ok_or_else(|| {
-        crate::error::CfadError::not_found("DNS record", record_id)
-    })
+    response
+        .result
+        .ok_or_else(|| crate::error::CfadError::not_found("DNS record", record_id))
 }
 
 pub async fn create_record(
@@ -49,9 +49,9 @@ pub async fn create_record(
     let endpoint = format!("/zones/{}/dns_records", zone_id);
     let response: CfResponse<DnsRecord> = client.post(&endpoint, record).await?;
 
-    let record = response.result.ok_or_else(|| {
-        crate::error::CfadError::api("No result returned from create record")
-    })?;
+    let record = response
+        .result
+        .ok_or_else(|| crate::error::CfadError::api("No result returned from create record"))?;
 
     println!("✓ Created DNS record: {}", record.name);
     Ok(record)
@@ -66,9 +66,9 @@ pub async fn update_record(
     let endpoint = format!("/zones/{}/dns_records/{}", zone_id, record_id);
     let response: CfResponse<DnsRecord> = client.put(&endpoint, update).await?;
 
-    let record = response.result.ok_or_else(|| {
-        crate::error::CfadError::api("No result returned from update record")
-    })?;
+    let record = response
+        .result
+        .ok_or_else(|| crate::error::CfadError::api("No result returned from update record"))?;
 
     println!("✓ Updated DNS record: {}", record.name);
     Ok(record)
@@ -116,16 +116,31 @@ pub async fn import_records(
     file_path: &str,
 ) -> Result<ImportStats> {
     let contents = std::fs::read_to_string(file_path)?;
+    let records = detect_and_parse_format(&contents)?;
+    let stats = import_records_batch(client, zone_id, records).await?;
+    print_import_summary(&stats);
+    Ok(stats)
+}
 
-    // Auto-detect format
-    let records = if contents.contains("$ORIGIN") || contents.contains("$TTL") || contents.contains(" IN ") {
+fn detect_and_parse_format(contents: &str) -> Result<Vec<CreateDnsRecord>> {
+    if is_bind_format(contents) {
         println!("Detected BIND zone file format");
-        parse_bind_format(&contents)?
+        parse_bind_format(contents)
     } else {
         println!("Detected CSV format");
-        parse_csv_format(&contents)?
-    };
+        parse_csv_format(contents)
+    }
+}
 
+fn is_bind_format(contents: &str) -> bool {
+    contents.contains("$ORIGIN") || contents.contains("$TTL") || contents.contains(" IN ")
+}
+
+async fn import_records_batch(
+    client: &CloudflareClient,
+    zone_id: &str,
+    records: Vec<CreateDnsRecord>,
+) -> Result<ImportStats> {
     let mut stats = ImportStats {
         total: records.len(),
         ..Default::default()
@@ -134,27 +149,43 @@ pub async fn import_records(
     println!("\nImporting {} DNS records...\n", stats.total);
 
     for (i, record) in records.into_iter().enumerate() {
-        print!("[{}/{}] Importing {} record for {}... ", i + 1, stats.total, record.record_type, record.name);
-
-        match create_record(client, zone_id, record).await {
-            Ok(_) => {
-                stats.success += 1;
-                println!("✓");
-            }
-            Err(e) => {
-                stats.failed += 1;
-                println!("✗");
-                eprintln!("  Error: {}", e);
-            }
-        }
+        import_single_record(client, zone_id, record, i + 1, stats.total, &mut stats).await;
     }
 
+    Ok(stats)
+}
+
+async fn import_single_record(
+    client: &CloudflareClient,
+    zone_id: &str,
+    record: CreateDnsRecord,
+    current: usize,
+    total: usize,
+    stats: &mut ImportStats,
+) {
+    print!(
+        "[{}/{}] Importing {} record for {}... ",
+        current, total, record.record_type, record.name
+    );
+
+    match create_record(client, zone_id, record).await {
+        Ok(_) => {
+            stats.success += 1;
+            println!("✓");
+        }
+        Err(e) => {
+            stats.failed += 1;
+            println!("✗");
+            eprintln!("  Error: {}", e);
+        }
+    }
+}
+
+fn print_import_summary(stats: &ImportStats) {
     println!("\nImport complete!");
     println!("  Success: {}", stats.success);
     println!("  Failed: {}", stats.failed);
     println!("  Total: {}", stats.total);
-
-    Ok(stats)
 }
 
 fn parse_csv_format(contents: &str) -> Result<Vec<CreateDnsRecord>> {
@@ -186,108 +217,145 @@ fn parse_bind_format(contents: &str) -> Result<Vec<CreateDnsRecord>> {
     let mut default_ttl = 1u32;
 
     for line in contents.lines() {
-        let line = line.trim();
-
-        // Skip empty lines and comments
-        if line.is_empty() || line.starts_with(';') {
-            continue;
-        }
-
-        // Parse $ORIGIN directive
-        if line.starts_with("$ORIGIN") {
-            default_origin = line.split_whitespace()
-                .nth(1)
-                .unwrap_or("")
-                .trim_end_matches('.')
-                .to_string();
-            continue;
-        }
-
-        // Parse $TTL directive
-        if line.starts_with("$TTL") {
-            if let Some(ttl_str) = line.split_whitespace().nth(1) {
-                default_ttl = ttl_str.parse().unwrap_or(1);
-            }
-            continue;
-        }
-
-        // Parse DNS record
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() < 4 {
-            continue;
-        }
-
-        let mut idx = 0;
-        let name = parts[idx];
-        idx += 1;
-
-        // Skip TTL if present (numeric)
-        let ttl = if parts[idx].parse::<u32>().is_ok() {
-            let t = parts[idx].parse().unwrap_or(default_ttl);
-            idx += 1;
-            t
-        } else {
-            default_ttl
-        };
-
-        // Skip IN class
-        if parts[idx] == "IN" {
-            idx += 1;
-        }
-
-        // Record type
-        let record_type = parts[idx].to_uppercase();
-        idx += 1;
-
-        // Build full name
-        let full_name = if name == "@" {
-            default_origin.clone()
-        } else if name.ends_with('.') {
-            name.trim_end_matches('.').to_string()
-        } else if !default_origin.is_empty() {
-            format!("{}.{}", name, default_origin)
-        } else {
-            name.to_string()
-        };
-
-        // Parse content based on record type
-        let (content, priority) = match record_type.as_str() {
-            "A" | "AAAA" | "CNAME" | "NS" => {
-                let content = parts[idx].trim_end_matches('.').to_string();
-                (content, None)
-            }
-            "MX" => {
-                let priority = parts[idx].parse().ok();
-                let content = if parts.len() > idx + 1 {
-                    parts[idx + 1].trim_end_matches('.').to_string()
-                } else {
-                    continue;
-                };
-                (content, priority)
-            }
-            "TXT" => {
-                // Join remaining parts and remove quotes
-                let content = parts[idx..]
-                    .join(" ")
-                    .trim_matches('"')
-                    .to_string();
-                (content, None)
-            }
-            _ => continue, // Skip unsupported record types
-        };
-
-        records.push(CreateDnsRecord {
-            record_type,
-            name: full_name,
-            content,
-            ttl: Some(ttl),
-            proxied: Some(false), // BIND imports default to not proxied
-            priority,
-            data: None,
-        });
+        process_bind_line(
+            line.trim(),
+            &mut records,
+            &mut default_origin,
+            &mut default_ttl,
+        );
     }
 
     Ok(records)
+}
+
+fn process_bind_line(
+    line: &str,
+    records: &mut Vec<CreateDnsRecord>,
+    default_origin: &mut String,
+    default_ttl: &mut u32,
+) {
+    if should_skip_line(line) {
+        return;
+    }
+
+    if process_bind_directive(line, default_origin, default_ttl) {
+        return;
+    }
+
+    if let Some(record) = parse_bind_record_line(line, default_origin, *default_ttl) {
+        records.push(record);
+    }
+}
+
+fn should_skip_line(line: &str) -> bool {
+    line.is_empty() || line.starts_with(';')
+}
+
+fn process_bind_directive(line: &str, default_origin: &mut String, default_ttl: &mut u32) -> bool {
+    // Parse $ORIGIN directive
+    if line.starts_with("$ORIGIN") {
+        *default_origin = line
+            .split_whitespace()
+            .nth(1)
+            .unwrap_or("")
+            .trim_end_matches('.')
+            .to_string();
+        return true;
+    }
+
+    // Parse $TTL directive
+    if line.starts_with("$TTL") {
+        if let Some(ttl_str) = line.split_whitespace().nth(1) {
+            *default_ttl = ttl_str.parse().unwrap_or(1);
+        }
+        return true;
+    }
+
+    false
+}
+
+fn parse_bind_record_line(
+    line: &str,
+    default_origin: &str,
+    default_ttl: u32,
+) -> Option<CreateDnsRecord> {
+    let parts: Vec<&str> = line.split_whitespace().collect();
+    if parts.len() < 4 {
+        return None;
+    }
+
+    let mut idx = 0;
+    let name = parts[idx];
+    idx += 1;
+
+    let (ttl, idx) = extract_ttl_and_advance(&parts, idx, default_ttl);
+    let (record_type, idx) = extract_record_type(&parts, idx)?;
+    let full_name = build_full_domain_name(name, default_origin);
+    let (content, priority) = parse_record_content(&record_type, &parts, idx)?;
+
+    Some(CreateDnsRecord {
+        record_type,
+        name: full_name,
+        content,
+        ttl: Some(ttl),
+        proxied: Some(false),
+        priority,
+        data: None,
+    })
+}
+
+fn extract_ttl_and_advance(parts: &[&str], idx: usize, default_ttl: u32) -> (u32, usize) {
+    if parts[idx].parse::<u32>().is_ok() {
+        let ttl = parts[idx].parse().unwrap_or(default_ttl);
+        (ttl, idx + 1)
+    } else {
+        (default_ttl, idx)
+    }
+}
+
+fn extract_record_type(parts: &[&str], mut idx: usize) -> Option<(String, usize)> {
+    // Skip IN class if present
+    if parts.get(idx)? == &"IN" {
+        idx += 1;
+    }
+
+    let record_type = parts.get(idx)?.to_uppercase();
+    Some((record_type, idx + 1))
+}
+
+fn build_full_domain_name(name: &str, default_origin: &str) -> String {
+    if name == "@" {
+        default_origin.to_string()
+    } else if name.ends_with('.') {
+        name.trim_end_matches('.').to_string()
+    } else if !default_origin.is_empty() {
+        format!("{}.{}", name, default_origin)
+    } else {
+        name.to_string()
+    }
+}
+
+fn parse_record_content(
+    record_type: &str,
+    parts: &[&str],
+    idx: usize,
+) -> Option<(String, Option<u16>)> {
+    match record_type {
+        "A" | "AAAA" | "CNAME" | "NS" => {
+            let content = parts.get(idx)?.trim_end_matches('.').to_string();
+            Some((content, None))
+        }
+        "MX" => {
+            let priority = parts.get(idx)?.parse().ok();
+            let content = parts.get(idx + 1)?.trim_end_matches('.').to_string();
+            Some((content, priority))
+        }
+        "TXT" => {
+            let content = parts[idx..].join(" ").trim_matches('"').to_string();
+            Some((content, None))
+        }
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -401,7 +469,7 @@ mail    300 IN  A   203.0.113.2";
         let records = parse_bind_format(bind).unwrap();
         assert_eq!(records.len(), 2);
         assert_eq!(records[0].ttl, Some(7200)); // Default TTL
-        assert_eq!(records[1].ttl, Some(300));  // Explicit TTL
+        assert_eq!(records[1].ttl, Some(300)); // Explicit TTL
     }
 
     #[test]

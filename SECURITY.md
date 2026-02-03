@@ -11,9 +11,10 @@
 
 **Please do not report security vulnerabilities through public GitHub issues.**
 
-Instead, please report them via email to: davidcforbes@aol.com
+Instead, please report them via email to: <davidcforbes@aol.com>
 
 Include:
+
 - Description of the vulnerability
 - Steps to reproduce
 - Potential impact
@@ -24,6 +25,7 @@ You should receive a response within 48 hours. We will work with you to understa
 ## Security Best Practices
 
 When using cfad:
+
 - Store API tokens securely (use config file with proper permissions or environment variables)
 - Never commit API tokens to version control
 - Use the principle of least privilege for API tokens

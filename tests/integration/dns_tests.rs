@@ -40,7 +40,9 @@ async fn test_list_records_success() {
         .await;
 
     let client = create_test_client(&mock_server).await;
-    let records = dns::list_records(&client, "zone123", None, None).await.unwrap();
+    let records = dns::list_records(&client, "zone123", None, None)
+        .await
+        .unwrap();
 
     assert_eq!(records.len(), 1);
     assert_eq!(records[0].name, "www.example.com");
@@ -64,7 +66,9 @@ async fn test_list_records_with_filters() {
         .await;
 
     let client = create_test_client(&mock_server).await;
-    let records = dns::list_records(&client, "zone123", Some("A"), Some("www.example.com")).await.unwrap();
+    let records = dns::list_records(&client, "zone123", Some("A"), Some("www.example.com"))
+        .await
+        .unwrap();
 
     assert_eq!(records.len(), 0);
 }
@@ -162,7 +166,9 @@ async fn test_create_record_success() {
         data: None,
     };
 
-    let record = dns::create_record(&client, "zone123", new_record).await.unwrap();
+    let record = dns::create_record(&client, "zone123", new_record)
+        .await
+        .unwrap();
 
     assert_eq!(record.name, "new.example.com");
     assert_eq!(record.content, "203.0.113.10");
@@ -205,7 +211,9 @@ async fn test_update_record_success() {
         priority: None,
     };
 
-    let record = dns::update_record(&client, "zone123", "rec123", update).await.unwrap();
+    let record = dns::update_record(&client, "zone123", "rec123", update)
+        .await
+        .unwrap();
 
     assert_eq!(record.content, "203.0.113.99");
 }

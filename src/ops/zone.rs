@@ -24,16 +24,12 @@ pub async fn get_zone(client: &CloudflareClient, zone_identifier: &str) -> Resul
 
     let response: CfResponse<Zone> = client.get(&endpoint).await?;
 
-    response.result.ok_or_else(|| {
-        crate::error::CfadError::not_found("Zone", zone_identifier)
-    })
+    response
+        .result
+        .ok_or_else(|| crate::error::CfadError::not_found("Zone", zone_identifier))
 }
 
-pub async fn create_zone(
-    client: &CloudflareClient,
-    name: &str,
-    account_id: &str,
-) -> Result<Zone> {
+pub async fn create_zone(client: &CloudflareClient, name: &str, account_id: &str) -> Result<Zone> {
     #[derive(Serialize)]
     struct CreateZone<'a> {
         name: &'a str,
@@ -52,18 +48,15 @@ pub async fn create_zone(
 
     let response: CfResponse<Zone> = client.post("/zones", create).await?;
 
-    let zone = response.result.ok_or_else(|| {
-        crate::error::CfadError::api("No result returned from create zone")
-    })?;
+    let zone = response
+        .result
+        .ok_or_else(|| crate::error::CfadError::api("No result returned from create zone"))?;
 
     println!("✓ Created zone: {}", zone.name);
     Ok(zone)
 }
 
-pub async fn delete_zone(
-    client: &CloudflareClient,
-    zone_id: &str,
-) -> Result<()> {
+pub async fn delete_zone(client: &CloudflareClient, zone_id: &str) -> Result<()> {
     let endpoint = format!("/zones/{}", zone_id);
     let _response: CfResponse<serde_json::Value> = client.delete(&endpoint).await?;
 

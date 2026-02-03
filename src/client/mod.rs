@@ -126,7 +126,10 @@ impl CloudflareClient {
         self.request(Method::PATCH, endpoint, Some(body)).await
     }
 
-    pub async fn delete<T: for<'de> Deserialize<'de>>(&self, endpoint: &str) -> Result<CfResponse<T>> {
+    pub async fn delete<T: for<'de> Deserialize<'de>>(
+        &self,
+        endpoint: &str,
+    ) -> Result<CfResponse<T>> {
         self.request(Method::DELETE, endpoint, None::<()>).await
     }
 

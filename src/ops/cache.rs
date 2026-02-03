@@ -15,7 +15,11 @@ pub async fn purge_all(client: &CloudflareClient, zone_id: &str) -> Result<()> {
     Ok(())
 }
 
-pub async fn purge_files(client: &CloudflareClient, zone_id: &str, urls: Vec<String>) -> Result<()> {
+pub async fn purge_files(
+    client: &CloudflareClient,
+    zone_id: &str,
+    urls: Vec<String>,
+) -> Result<()> {
     let endpoint = format!("/zones/{}/purge_cache", zone_id);
 
     let payload = PurgeFiles { files: urls };
@@ -37,7 +41,11 @@ pub async fn purge_tags(client: &CloudflareClient, zone_id: &str, tags: Vec<Stri
     Ok(())
 }
 
-pub async fn purge_hosts(client: &CloudflareClient, zone_id: &str, hosts: Vec<String>) -> Result<()> {
+pub async fn purge_hosts(
+    client: &CloudflareClient,
+    zone_id: &str,
+    hosts: Vec<String>,
+) -> Result<()> {
     let endpoint = format!("/zones/{}/purge_cache", zone_id);
 
     let payload = PurgeHosts { hosts };
@@ -48,7 +56,11 @@ pub async fn purge_hosts(client: &CloudflareClient, zone_id: &str, hosts: Vec<St
     Ok(())
 }
 
-pub async fn purge_prefixes(client: &CloudflareClient, zone_id: &str, prefixes: Vec<String>) -> Result<()> {
+pub async fn purge_prefixes(
+    client: &CloudflareClient,
+    zone_id: &str,
+    prefixes: Vec<String>,
+) -> Result<()> {
     let endpoint = format!("/zones/{}/purge_cache", zone_id);
 
     let payload = PurgePrefixes { prefixes };

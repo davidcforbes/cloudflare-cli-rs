@@ -132,6 +132,7 @@ cargo test -- --nocapture
 - **Test coverage** - Aim for 80%+ on new code
 
 Example unit test:
+
 ```rust
 #[cfg(test)]
 mod tests {
@@ -147,6 +148,7 @@ mod tests {
 ```
 
 Example integration test:
+
 ```rust
 use wiremock::{Mock, MockServer, ResponseTemplate};
 use wiremock::matchers::{method, path};
@@ -189,6 +191,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 ```
 
 Types:
+
 - `feat:` - New feature
 - `fix:` - Bug fix
 - `docs:` - Documentation changes
@@ -198,6 +201,7 @@ Types:
 - `chore:` - Build/tooling changes
 
 Examples:
+
 ```
 feat(dns): add BIND zone file import support
 fix(client): handle rate limiting correctly
@@ -257,11 +261,12 @@ Releases are managed by maintainers:
 
 - **Questions** - Open a discussion or issue
 - **Chat** - (Coming soon)
-- **Email** - davidcforbes@aol.com
+- **Email** - <davidcforbes@aol.com>
 
 ## Recognition
 
 Contributors are recognized in:
+
 - GitHub contributors page
 - Release notes
 - CHANGELOG.md (for significant contributions)

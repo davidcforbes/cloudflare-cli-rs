@@ -2,9 +2,15 @@
 
 A fast, type-safe Rust CLI for managing Cloudflare DNS, zones, and cache from the command line.
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]()
-[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/davidcforbes/cloudflare-cli-rs/releases)
-[![License](https://img.shields.io/badge/license-MIT-blue)]()
+[![CI](https://github.com/davidcforbes/cfad/workflows/CI/badge.svg)](https://github.com/davidcforbes/cfad/actions/workflows/ci.yml)
+[![Release](https://github.com/davidcforbes/cfad/workflows/Release/badge.svg)](https://github.com/davidcforbes/cfad/actions/workflows/release.yml)
+[![codecov](https://codecov.io/gh/davidcforbes/cfad/branch/master/graph/badge.svg)](https://codecov.io/gh/davidcforbes/cfad)
+[![GitHub release](https://img.shields.io/github/release/davidcforbes/cfad.svg)](https://github.com/davidcforbes/cfad/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Dependencies](https://deps.rs/repo/github/davidcforbes/cfad/status.svg)](https://deps.rs/repo/github/davidcforbes/cfad)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)](https://github.com/davidcforbes/cfad/releases)
+[![Made with Rust](https://img.shields.io/badge/Made%20with-Rust-orange?logo=rust)](https://www.rust-lang.org)
+[![Cloudflare API](https://img.shields.io/badge/Cloudflare%20API-v4-orange?logo=cloudflare)](https://api.cloudflare.com/)
 
 > **Current Status:** v0.2.0 - DNS features complete (show, update, delete, import)
 
@@ -133,6 +139,7 @@ cfad --version
 ## Quick Start
 
 1. **Initialize configuration:**
+
    ```bash
    cfad config init
    ```
@@ -151,6 +158,7 @@ cfad --version
    ```
 
 3. **Start managing your Cloudflare resources:**
+
    ```bash
    cfad zone list
    cfad dns list example.com
@@ -163,26 +171,30 @@ cfad --version
 CFAD supports multiple authentication methods with the following priority:
 
 1. **CLI Flags** (highest priority)
+
    ```bash
    cfad --api-token <token> zone list
    ```
 
 2. **Environment Variables**
+
    ```bash
    export CLOUDFLARE_API_TOKEN="your_token"
    cfad zone list
    ```
 
 3. **Configuration File**
+
    ```bash
    cfad --profile production zone list
    ```
 
 ### API Token (Recommended)
 
-Create an API token at https://dash.cloudflare.com/profile/api-tokens
+Create an API token at <https://dash.cloudflare.com/profile/api-tokens>
 
 Required permissions:
+
 - Zone:Read (for zone list/show)
 - Zone:Edit (for zone create/update/delete)
 - DNS:Read (for DNS list/show)
@@ -197,6 +209,7 @@ export CLOUDFLARE_API_EMAIL="your@email.com"
 ```
 
 Or in config file:
+
 ```toml
 [profiles.default]
 api_key = "your_api_key"
@@ -210,6 +223,7 @@ api_email = "your@email.com"
 ### DNS Management
 
 #### List DNS Records
+
 ```bash
 # List all DNS records for a zone
 cfad dns list example.com
@@ -222,6 +236,7 @@ cfad dns list example.com --name www
 ```
 
 **Output:**
+
 ```
 DNS Records for example.com:
 
@@ -237,6 +252,7 @@ Total: 3 records
 ```
 
 #### Create DNS Record
+
 ```bash
 # Create an A record
 cfad dns add example.com A www 203.0.113.1
@@ -249,12 +265,14 @@ cfad dns add example.com MX @ mail.example.com --priority 10
 ```
 
 #### Show DNS Record
+
 ```bash
 # Show DNS record details
 cfad dns show example.com <record-id>
 ```
 
 **Output:**
+
 ```
 DNS Record Details:
 
@@ -269,6 +287,7 @@ DNS Record Details:
 ```
 
 #### Update DNS Record
+
 ```bash
 # Update record content
 cfad dns update example.com <record-id> --content 203.0.113.2
@@ -281,12 +300,14 @@ cfad dns update example.com <record-id> --name api.example.com
 ```
 
 #### Delete DNS Record
+
 ```bash
 # Delete with confirmation
 cfad dns delete example.com <record-id> --confirm
 ```
 
 #### Import DNS Records
+
 ```bash
 # Import from CSV file
 cfad dns import example.com dns-records.csv
@@ -296,6 +317,7 @@ cfad dns import example.com zone.bind
 ```
 
 **CSV Format:**
+
 ```csv
 type,name,content,ttl,proxied,priority
 A,@,203.0.113.1,3600,true,
@@ -305,6 +327,7 @@ TXT,@,"v=spf1 mx ~all",3600,false,
 ```
 
 **BIND Format:**
+
 ```bind
 $ORIGIN example.com.
 $TTL 3600
@@ -320,6 +343,7 @@ mail    IN  A       203.0.113.2
 ### Zone Management
 
 #### List Zones
+
 ```bash
 # List all zones
 cfad zone list
@@ -329,6 +353,7 @@ cfad zone list --status active
 ```
 
 **Output:**
+
 ```
 Zones:
 
@@ -344,6 +369,7 @@ Total: 3 zones
 ```
 
 #### Show Zone Details
+
 ```bash
 # Show by name or ID
 cfad zone show example.com
@@ -351,6 +377,7 @@ cfad zone show <zone-id>
 ```
 
 **Output:**
+
 ```
 Zone: example.com
   ID: abc123...
@@ -359,23 +386,27 @@ Zone: example.com
 ```
 
 #### Create Zone
+
 ```bash
 # Create a new zone
 cfad zone create newdomain.com --account-id <account-id>
 ```
 
 #### Delete Zone
+
 ```bash
 # Delete with confirmation
 cfad zone delete <zone-id> --confirm
 ```
 
 #### Show Zone Settings
+
 ```bash
 cfad zone settings example.com
 ```
 
 #### Update Zone Settings
+
 ```bash
 # Update SSL mode
 cfad zone update example.com --ssl strict
@@ -401,11 +432,13 @@ cfad zone update example.com \
 ### Cache Management
 
 #### Purge All Cache
+
 ```bash
 cfad cache purge example.com --all
 ```
 
 #### Purge Specific Files
+
 ```bash
 # Single file
 cfad cache purge example.com --files https://example.com/page.html
@@ -415,17 +448,20 @@ cfad cache purge example.com --files https://example.com/page1.html,https://exam
 ```
 
 #### Purge by Cache Tags
+
 ```bash
 # Requires Cloudflare Enterprise
 cfad cache purge example.com --tags tag1,tag2,tag3
 ```
 
 #### Purge by Hosts
+
 ```bash
 cfad cache purge example.com --hosts cdn.example.com,assets.example.com
 ```
 
 #### Purge by Prefixes
+
 ```bash
 # Requires Cloudflare Enterprise
 cfad cache purge example.com --prefixes /static/,/images/
@@ -436,11 +472,13 @@ cfad cache purge example.com --prefixes /static/,/images/
 ### Configuration Management
 
 #### Initialize Config
+
 ```bash
 cfad config init
 ```
 
 #### Show Configuration
+
 ```bash
 # Show default profile
 cfad config show
@@ -450,6 +488,7 @@ cfad config show production
 ```
 
 **Output:**
+
 ```
 Profile configuration:
   API Token: Some("abcd****")
@@ -512,16 +551,21 @@ cfad --quiet cache purge example.com --all
 ## Output Formats
 
 ### Table (Default)
+
 Beautifully formatted tables with colors
 
 ### JSON
+
 Machine-readable output for scripting:
+
 ```bash
 cfad --format json zone list | jq
 ```
 
 ### CSV
+
 Spreadsheet-compatible output:
+
 ```bash
 cfad --format csv zone list > zones.csv
 ```
@@ -531,10 +575,12 @@ cfad --format csv zone list > zones.csv
 ## Configuration File
 
 **Location:**
+
 - Linux/Mac: `~/.config/cfad/config.toml`
 - Windows: `%APPDATA%\cfad\config.toml`
 
 **Format:**
+
 ```toml
 default_profile = "default"
 
@@ -654,6 +700,7 @@ CFAD provides clear error messages with categories:
 ### Automatic Retries
 
 Network errors are automatically retried with exponential backoff:
+
 - Max attempts: 3
 - Initial delay: 100ms
 - Max delay: 30s
@@ -662,6 +709,7 @@ Network errors are automatically retried with exponential backoff:
 ### Rate Limiting
 
 CFAD respects Cloudflare's rate limits:
+
 - Default: 4 requests/second
 - Automatic throttling via tokio::sync::Semaphore
 - Prevents API quota exhaustion
@@ -779,8 +827,32 @@ cargo fmt
 - ✅ **Compilation Errors:** 0
 - ✅ **Compilation Warnings:** 0
 - ✅ **Clippy Warnings:** 0
+- ✅ **Tests:** 68 (54 unit + 14 integration)
 - ✅ **Binary Size:** 5.3 MB (release)
 - ✅ **Build Time:** ~55s (release)
+
+### Code Quality Checks
+
+Run all quality checks before pushing:
+
+```bash
+# Windows
+.\scripts\quality-check.ps1
+
+# Linux/macOS
+./scripts/quality-check.sh
+
+# Using Make
+make quality-check
+```
+
+**See [DEVELOPMENT.md](docs/DEVELOPMENT.md) for:**
+
+- Setting up development tools
+- Running local code quality checks
+- Git hooks for automated checking
+- Complexity analysis
+- Contributing guidelines
 
 ---
 
@@ -809,30 +881,35 @@ cargo fmt
 ## Roadmap
 
 ### v0.2.0 - Bulk Operations (Planned)
+
 - DNS import from BIND zone files
 - DNS import from CSV files
 - Bulk DNS record updates
 - Zone migration tools
 
 ### v0.3.0 - Security Features (Planned)
+
 - Firewall rule management
 - IP access rules (whitelist/block/challenge)
 - Country-based blocking
 - WAF custom rules
 
 ### v0.4.0 - Analytics & Reporting (Planned)
+
 - Dashboard analytics queries
 - Request/bandwidth/threat metrics
 - Time-range filtering
 - CSV/JSON report export
 
 ### v0.5.0 - Workers & Edge (Planned)
+
 - Worker script deployment
 - Worker log tailing
 - KV namespace management
 - Durable Objects support
 
 ### v1.0.0 - Full Integration (Planned)
+
 - R2 bucket management (integrate cfr2)
 - Pages deployment
 - Stream video management
@@ -878,7 +955,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 - **Documentation:** This README
 - **Issues:** GitHub Issues
-- **Cloudflare API Docs:** https://developers.cloudflare.com/api/
+- **Cloudflare API Docs:** <https://developers.cloudflare.com/api/>
 
 ---
 
@@ -893,11 +970,13 @@ v0.2.0 introduces breaking changes to DNS record operations to align with Cloudf
 #### DNS Show Command
 
 **v0.1.0 (non-functional):**
+
 ```bash
 cfad dns show <record-id>  # Did not work
 ```
 
 **v0.2.0:**
+
 ```bash
 cfad dns show <zone> <record-id>
 ```
@@ -905,11 +984,13 @@ cfad dns show <zone> <record-id>
 #### DNS Update Command
 
 **v0.1.0 (non-functional):**
+
 ```bash
 cfad dns update <record-id> --content 1.2.3.4  # Did not work
 ```
 
 **v0.2.0:**
+
 ```bash
 cfad dns update <zone> <record-id> --content 1.2.3.4
 ```
@@ -917,11 +998,13 @@ cfad dns update <zone> <record-id> --content 1.2.3.4
 #### DNS Delete Command
 
 **v0.1.0 (non-functional):**
+
 ```bash
 cfad dns delete <record-id> --confirm  # Did not work
 ```
 
 **v0.2.0:**
+
 ```bash
 cfad dns delete <zone> <record-id> --confirm
 ```
@@ -938,6 +1021,7 @@ The Cloudflare API requires both `zone_id` and `record_id` for all DNS record op
 #### No Breaking Changes
 
 These commands remain unchanged:
+
 - `cfad dns list <zone>` - No change
 - `cfad dns add <zone> <type> <name> <content>` - No change
 - All zone, cache, config commands - No change
@@ -949,6 +1033,7 @@ These commands remain unchanged:
 ### v0.2.0 (2026-02-02)
 
 **Completed:**
+
 - ✅ DNS show command - View detailed record information
 - ✅ DNS update command - Modify existing records (now functional)
 - ✅ DNS delete command - Remove records (now functional)
@@ -962,12 +1047,14 @@ These commands remain unchanged:
 - ✅ Zero clippy warnings
 
 **Breaking Changes:**
+
 - DNS show, update, delete commands now require `<zone>` parameter
 - Old: `cfad dns update <record-id> --content X`
 - New: `cfad dns update <zone> <record-id> --content X`
 - See Migration Guide above for details
 
 **Architecture:**
+
 - Aligned with Cloudflare API zone-scoped requirements
 - Matches industry standard (jordantrizz/cloudflare-cli)
 - Single API call per operation (improved performance)
@@ -975,6 +1062,7 @@ These commands remain unchanged:
 ### v0.1.0 (2026-02-01)
 
 **Implemented:**
+
 - ✅ DNS management (list, add, update, delete)
 - ✅ Zone management (list, show, create, delete, update settings)
 - ✅ Cache management (purge all, files, tags, hosts, prefixes)
@@ -988,6 +1076,7 @@ These commands remain unchanged:
 - ✅ Production-ready release build
 
 **Not Implemented (Future):**
+
 - DNS import (BIND/CSV)
 - Firewall rules
 - Analytics queries

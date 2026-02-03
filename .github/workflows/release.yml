@@ -23,7 +23,7 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -120,10 +120,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
         with:
           targets: ${{ matrix.target }}
 
@@ -134,7 +134,7 @@ jobs:
           sudo apt-get install -y musl-tools
 
       - name: Cache cargo registry
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@ad397744b0d591a723ab90405b7247fac0e6b8db # v2
 
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
@@ -172,7 +172,7 @@ jobs:
           "$($hash.Hash.ToLower())  cfad-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.zip" | Out-File -Encoding ASCII cfad-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.zip.sha256
 
       - name: Upload Release Asset (Archive)
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -182,7 +182,7 @@ jobs:
           asset_content_type: application/octet-stream
 
       - name: Upload Release Asset (Checksum)
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -197,7 +197,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
         with:
           path: artifacts
 
@@ -213,7 +213,7 @@ jobs:
           find . -name "*.sha256" -exec cat {} \; >> checksums.txt
 
       - name: Upload checksums file
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

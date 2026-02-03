@@ -1,9 +1,9 @@
 use clap::{Parser, Subcommand};
 
+pub mod cache;
 pub mod config;
 pub mod dns;
 pub mod zone;
-pub mod cache;
 
 #[derive(Parser)]
 #[command(
@@ -73,7 +73,10 @@ pub fn setup_logging(verbose: bool, quiet: bool) {
     };
 
     tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::new(format!("cfad={}", level)))
+        .with_env_filter(tracing_subscriber::EnvFilter::new(format!(
+            "cfad={}",
+            level
+        )))
         .with_target(false)
         .with_thread_ids(false)
         .init();

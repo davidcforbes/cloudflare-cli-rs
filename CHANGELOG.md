@@ -7,18 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### Added in Unreleased
 - Comprehensive test suite with 68 tests (54 unit + 14 integration)
 - Integration tests using wiremock for API mocking
 - Test coverage for DNS parsers, output formatters, configuration, and error handling
 
-### Changed
+### Changed in Unreleased
 - Refactored project structure to support both library and binary targets
 - Added `new_with_base_url()` method to CloudflareClient for testing
 
 ## [0.2.0] - 2026-02-02
 
-### Added
+### Added in 0.2.0
 - **DNS Import** - Import DNS records from CSV or BIND zone files
   - Auto-detects file format (CSV vs BIND)
   - Supports A, AAAA, CNAME, MX, TXT, NS record types
@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - BIND zone file parsing with $ORIGIN and $TTL directive support
 - Example files in `docs/examples/` (dns-records.csv, zone.bind)
 
-### Changed
+### Changed in 0.2.0
 - **BREAKING:** DNS commands now require `<ZONE>` parameter
   - Old: `cfad dns show <record-id>`
   - New: `cfad dns show <zone> <record-id>`
@@ -38,18 +38,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Version bumped from 0.1.0 to 0.2.0
 - Updated README with migration guide and new examples
 
-### Fixed
+### Fixed in 0.2.0
 - DNS show, update, and delete commands are now fully functional
 - Proper error handling for DNS operations
 
-### Documentation
+### Documentation in 0.2.0
 - Added comprehensive usage examples for DNS import
 - Added migration guide (v0.1.0 → v0.2.0)
 - Updated feature matrix
 
 ## [0.1.0] - 2026-02-01
 
-### Added
+### Added in 0.1.0
 - **Initial Release** - Core Cloudflare CLI functionality
 - **DNS Management**
   - List DNS records with filters (type, name)
@@ -78,7 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Structured logging with tracing
   - Shell completion generation (bash, zsh, fish)
 
-### Documentation
+### Documentation in 0.1.0
 - Initial README with installation and usage instructions
 - Example configuration file
 - License (MIT)

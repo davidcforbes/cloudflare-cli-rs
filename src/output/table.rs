@@ -1,6 +1,6 @@
-use comfy_table::{Table, Cell, Color, Attribute, ContentArrangement, presets::UTF8_FULL};
 use crate::api::dns::DnsRecord;
 use crate::api::zone::Zone;
+use comfy_table::{presets::UTF8_FULL, Attribute, Cell, Color, ContentArrangement, Table};
 
 pub fn print_dns_records(records: &[DnsRecord]) {
     let mut table = Table::new();
@@ -8,12 +8,24 @@ pub fn print_dns_records(records: &[DnsRecord]) {
         .load_preset(UTF8_FULL)
         .set_content_arrangement(ContentArrangement::Dynamic)
         .set_header(vec![
-            Cell::new("Type").add_attribute(Attribute::Bold).fg(Color::Cyan),
-            Cell::new("Name").add_attribute(Attribute::Bold).fg(Color::Cyan),
-            Cell::new("Content").add_attribute(Attribute::Bold).fg(Color::Cyan),
-            Cell::new("TTL").add_attribute(Attribute::Bold).fg(Color::Cyan),
-            Cell::new("Proxied").add_attribute(Attribute::Bold).fg(Color::Cyan),
-            Cell::new("ID").add_attribute(Attribute::Bold).fg(Color::Cyan),
+            Cell::new("Type")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Name")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Content")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("TTL")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Proxied")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("ID")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
         ]);
 
     for record in records {
@@ -21,7 +33,11 @@ pub fn print_dns_records(records: &[DnsRecord]) {
             Cell::new(&record.record_type),
             Cell::new(&record.name),
             Cell::new(&record.content),
-            Cell::new(if record.ttl == 1 { "Auto".to_string() } else { record.ttl.to_string() }),
+            Cell::new(if record.ttl == 1 {
+                "Auto".to_string()
+            } else {
+                record.ttl.to_string()
+            }),
             Cell::new(if record.proxied { "✓" } else { "✗" }),
             Cell::new(&record.id[..8]),
         ]);
@@ -37,7 +53,14 @@ pub fn print_dns_record(record: &DnsRecord) {
     println!("  Type: {}", record.record_type);
     println!("  Name: {}", record.name);
     println!("  Content: {}", record.content);
-    println!("  TTL: {}", if record.ttl == 1 { "Auto".to_string() } else { record.ttl.to_string() });
+    println!(
+        "  TTL: {}",
+        if record.ttl == 1 {
+            "Auto".to_string()
+        } else {
+            record.ttl.to_string()
+        }
+    );
     println!("  Proxied: {}", if record.proxied { "✓" } else { "✗" });
     if let Some(priority) = record.priority {
         println!("  Priority: {}", priority);
@@ -52,9 +75,15 @@ pub fn print_zones(zones: &[Zone]) {
         .load_preset(UTF8_FULL)
         .set_content_arrangement(ContentArrangement::Dynamic)
         .set_header(vec![
-            Cell::new("Name").add_attribute(Attribute::Bold).fg(Color::Cyan),
-            Cell::new("Status").add_attribute(Attribute::Bold).fg(Color::Cyan),
-            Cell::new("ID").add_attribute(Attribute::Bold).fg(Color::Cyan),
+            Cell::new("Name")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Status")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("ID")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
         ]);
 
     for zone in zones {
@@ -80,7 +109,7 @@ pub fn print_zones(zones: &[Zone]) {
 mod tests {
     use super::*;
     use crate::api::dns::DnsRecord;
-    use crate::api::zone::{Zone, Owner, Account};
+    use crate::api::zone::{Account, Owner, Zone};
 
     fn create_test_record(ttl: u32, proxied: bool, priority: Option<u16>) -> DnsRecord {
         DnsRecord {

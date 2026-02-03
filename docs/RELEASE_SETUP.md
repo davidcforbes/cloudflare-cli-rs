@@ -2,15 +2,18 @@
 
 ## What Was Set Up
 
-Your project now has **fully automated GitHub releases** configured. Here's what was added:
+Your project now has **fully automated GitHub releases** configured.
+Here's what was added:
 
 ### 1. Release Workflow (`.github/workflows/release.yml`)
 
 **Triggers on:**
+
 - Git tags matching `v*.*.*` (e.g., `v0.2.0`, `v1.0.0`)
 - Manual trigger via GitHub Actions UI
 
 **Builds for 5 platforms:**
+
 - ✅ Windows (x86_64-pc-windows-msvc) → `.zip`
 - ✅ Linux GNU (x86_64-unknown-linux-gnu) → `.tar.gz`
 - ✅ Linux musl/static (x86_64-unknown-linux-musl) → `.tar.gz`
@@ -18,6 +21,7 @@ Your project now has **fully automated GitHub releases** configured. Here's what
 - ✅ macOS Apple Silicon (aarch64-apple-darwin) → `.tar.gz`
 
 **Features:**
+
 - ✅ Automatic binary stripping for smaller file sizes
 - ✅ SHA256 checksums for each binary
 - ✅ Unified `checksums.txt` for easy verification
@@ -26,11 +30,13 @@ Your project now has **fully automated GitHub releases** configured. Here's what
 
 ### 2. Updated README.md
 
-Added comprehensive installation instructions for all platforms with direct download links to GitHub releases.
+Added comprehensive installation instructions for all platforms with direct
+download links to GitHub releases.
 
 ### 3. Release Documentation (`docs/RELEASE.md`)
 
 Step-by-step guide for creating releases, including:
+
 - Pre-release checklist
 - Version tagging process
 - Monitoring and verification
@@ -55,6 +61,7 @@ git push origin v0.2.0
 ```
 
 **What happens next:**
+
 1. GitHub Actions automatically starts the release workflow
 2. Builds binaries for all 5 platforms in parallel
 3. Creates a GitHub Release with all binaries attached
@@ -148,18 +155,22 @@ Consider adding later:
 
 ## Resources
 
-- [GitHub Releases Documentation](https://docs.github.com/en/repositories/releasing-projects-on-github)
+- [GitHub Releases Documentation](
+  https://docs.github.com/en/repositories/releasing-projects-on-github)
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- [Rust Cross-Compilation Guide](https://rust-lang.github.io/rustup/cross-compilation.html)
+- [Rust Cross-Compilation Guide](
+  https://rust-lang.github.io/rustup/cross-compilation.html)
 - [Semantic Versioning](https://semver.org/)
 
 ## Summary
 
-Your release workflow is **production-ready**. Just push a tag and GitHub Actions handles the rest:
+Your release workflow is **production-ready**. Just push a tag and GitHub
+Actions handles the rest:
 
 ```bash
 git tag -a v0.2.0 -m "Release v0.2.0"
 git push origin v0.2.0
 ```
 
-Then visit the [Actions tab](https://github.com/davidcforbes/cfad/actions) to monitor the build!
+Then visit the [Actions tab](https://github.com/davidcforbes/cfad/actions)
+to monitor the build!

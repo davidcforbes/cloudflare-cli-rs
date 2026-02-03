@@ -139,6 +139,7 @@ Follow Semantic Versioning (SemVer):
 - **PATCH** (0.0.1): Bug fixes, backwards compatible
 
 Examples:
+
 - v0.2.0 → v0.3.0: Added firewall management features
 - v0.3.0 → v0.3.1: Fixed authentication bug
 - v0.9.0 → v1.0.0: First stable release with API stability guarantee
@@ -169,10 +170,10 @@ The release workflow (`.github/workflows/release.yml`) is triggered by:
 ### Build Matrix
 
 | Target | OS | Archive | Notes |
-|--------|-----|---------|-------|
+| -------- | ------- | ------- | ------------------------------- |
 | x86_64-pc-windows-msvc | Windows | zip | Standard Windows binary |
 | x86_64-unknown-linux-gnu | Ubuntu | tar.gz | Standard Linux binary (glibc) |
-| x86_64-unknown-linux-musl | Ubuntu | tar.gz | Static binary (no glibc dependency) |
+| x86_64-unknown-linux-musl | Ubuntu | tar.gz | Static Linux binary (musl) |
 | x86_64-apple-darwin | macOS | tar.gz | Intel Macs |
 | aarch64-apple-darwin | macOS | tar.gz | M1/M2/M3 Macs |
 

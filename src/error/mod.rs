@@ -163,7 +163,11 @@ mod tests {
     fn test_error_api_constructor() {
         let error = CfadError::api("Test message");
         match error {
-            CfadError::Api { status, message, code } => {
+            CfadError::Api {
+                status,
+                message,
+                code,
+            } => {
                 assert_eq!(status, 400);
                 assert_eq!(message, "Test message");
                 assert_eq!(code, None);
@@ -176,7 +180,11 @@ mod tests {
     fn test_error_api_with_code_constructor() {
         let error = CfadError::api_with_code(403, "Forbidden", 1003);
         match error {
-            CfadError::Api { status, message, code } => {
+            CfadError::Api {
+                status,
+                message,
+                code,
+            } => {
                 assert_eq!(status, 403);
                 assert_eq!(message, "Forbidden");
                 assert_eq!(code, Some(1003));
@@ -189,7 +197,10 @@ mod tests {
     fn test_error_not_found_constructor() {
         let error = CfadError::not_found("DNS record", "abc123");
         match error {
-            CfadError::NotFound { resource_type, identifier } => {
+            CfadError::NotFound {
+                resource_type,
+                identifier,
+            } => {
                 assert_eq!(resource_type, "DNS record");
                 assert_eq!(identifier, "abc123");
             }

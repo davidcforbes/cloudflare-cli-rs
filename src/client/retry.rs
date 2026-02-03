@@ -23,10 +23,7 @@ impl Default for RetryConfig {
     }
 }
 
-pub async fn retry_with_backoff<F, Fut, T>(
-    operation: F,
-    config: RetryConfig,
-) -> Result<T>
+pub async fn retry_with_backoff<F, Fut, T>(operation: F, config: RetryConfig) -> Result<T>
 where
     F: Fn() -> Fut,
     Fut: Future<Output = Result<T>>,

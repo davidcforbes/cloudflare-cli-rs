@@ -1,0 +1,6 @@
+---
+exclude_paths:
+  - "Cargo.lock"
+  - "CHANGELOG.md"
+  - "target/**"
+  - "docs/examples/**"

@@ -69,12 +69,14 @@ impl Profile {
 
     pub fn redacted(&self) -> Self {
         Self {
-            api_token: self.api_token.as_ref().map(|t| {
-                format!("{}****", &t[..4.min(t.len())])
-            }),
-            api_key: self.api_key.as_ref().map(|k| {
-                format!("{}****", &k[..4.min(k.len())])
-            }),
+            api_token: self
+                .api_token
+                .as_ref()
+                .map(|t| format!("{}****", &t[..4.min(t.len())])),
+            api_key: self
+                .api_key
+                .as_ref()
+                .map(|k| format!("{}****", &k[..4.min(k.len())])),
             api_email: self.api_email.clone(),
             default_zone: self.default_zone.clone(),
             output_format: self.output_format.clone(),
@@ -110,8 +112,8 @@ impl Config {
     }
 
     pub fn config_path() -> Result<PathBuf> {
-        let config_dir = dirs::config_dir()
-            .ok_or_else(|| CfadError::config("Cannot find config directory"))?;
+        let config_dir =
+            dirs::config_dir().ok_or_else(|| CfadError::config("Cannot find config directory"))?;
 
         Ok(config_dir.join("cfad").join("config.toml"))
     }
@@ -132,8 +134,7 @@ impl Config {
             std::fs::create_dir_all(parent)?;
         }
 
-        let contents = toml::to_string_pretty(self)
-            .map_err(CfadError::TomlSer)?;
+        let contents = toml::to_string_pretty(self).map_err(CfadError::TomlSer)?;
         std::fs::write(path, contents)?;
         Ok(())
     }
