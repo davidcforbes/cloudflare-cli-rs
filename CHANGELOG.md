@@ -7,14 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added in Unreleased
+### Added in Unreleased (2026-02-03)
+- **CodeCov Integration** - Automated test coverage reporting
+  - Configured codecov-action@v5 with token authentication
+  - Coverage badge in README
+  - Coverage reports uploaded on every CI run
+- **Quality Check Claude Skill** - `/quality` command for comprehensive checks
+  - Runs formatting, linting, tests, security audit, build verification
+  - Validates cyclomatic complexity ≤8
+  - Maintains GitHub badge integrity
 - Comprehensive test suite with 68 tests (54 unit + 14 integration)
 - Integration tests using wiremock for API mocking
 - Test coverage for DNS parsers, output formatters, configuration, and error handling
+- cargo-audit security scanning in quality checks
 
-### Changed in Unreleased
+### Changed in Unreleased (2026-02-03)
+- **Dependencies: 30% Reduction** (20 → 14 production dependencies)
+  - Removed unused: chrono, futures, anyhow, colored, clap_complete, indicatif
+  - Removed unused dev deps: assert_cmd, predicates, tempfile, serial_test
+  - Updated to latest versions: reqwest 0.13, toml 0.9, dirs 6.0, indicatif 0.18, colored 3.1
+  - Eliminated security warnings (RUSTSEC-2020-0159, RUSTSEC-2025-0055)
+- **GitHub Actions: Modernized Workflows**
+  - Release workflow: Replaced deprecated actions/create-release@v1 with softprops/action-gh-release@v2
+  - Upgraded actions/download-artifact from v3 to v4
+  - Upgraded actions/upload-artifact to v4
+  - Fixed set-output deprecation warnings (11 warnings eliminated)
+  - Removed musl build target (4 working platforms: Windows, Linux, macOS Intel/ARM)
 - Refactored project structure to support both library and binary targets
 - Added `new_with_base_url()` method to CloudflareClient for testing
+
+### Fixed in Unreleased (2026-02-03)
+- Cyclomatic complexity in `run()` function reduced from 12 to <8
+- Release workflow permissions issue (added `contents: write`)
+- All GitHub Actions deprecation warnings resolved
+- deps.rs security false positives eliminated
+
+### Documentation in Unreleased (2026-02-03)
+- Updated README with current dependency list
+- Removed musl installation instructions
+- Added `/quality` skill documentation
+- Updated all dependency version numbers
+- Listed removed unused dependencies
 
 ## [0.2.0] - 2026-02-02
 
