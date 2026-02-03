@@ -5,6 +5,7 @@ A fast, type-safe Rust CLI for managing Cloudflare DNS, zones, and cache from th
 [![CI](https://github.com/davidcforbes/cfad/workflows/CI/badge.svg)](https://github.com/davidcforbes/cfad/actions/workflows/ci.yml)
 [![Release](https://github.com/davidcforbes/cfad/workflows/Release/badge.svg)](https://github.com/davidcforbes/cfad/actions/workflows/release.yml)
 [![codecov](https://codecov.io/gh/davidcforbes/cfad/branch/master/graph/badge.svg)](https://codecov.io/gh/davidcforbes/cfad)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/098be488ba4a46199247ae6fde2b8a71)](https://app.codacy.com/gh/davidcforbes/cloudflare-cli-rs/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![GitHub release](https://img.shields.io/github/release/davidcforbes/cfad.svg)](https://github.com/davidcforbes/cfad/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Dependencies](https://deps.rs/repo/github/davidcforbes/cfad/status.svg)](https://deps.rs/repo/github/davidcforbes/cfad)
