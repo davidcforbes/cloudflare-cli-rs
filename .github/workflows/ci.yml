@@ -60,7 +60,8 @@ jobs:
         run: cargo install cargo-tarpaulin
       - name: Generate coverage
         run: cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml
-      - name: Upload coverage
-        uses: codecov/codecov-action@ab904c41d6ece82784817410c45d8b8c02684457 # v3
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@5f8c5397e573bf2b29687bfb699a2c14774db62a # v5
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
