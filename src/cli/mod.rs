@@ -1,0 +1,80 @@
+use clap::{Parser, Subcommand};
+
+pub mod config;
+pub mod dns;
+pub mod zone;
+pub mod cache;
+
+#[derive(Parser)]
+#[command(
+    name = "cfad",
+    version = "0.1.0",
+    about = "CloudFlare Admin CLI - Manage Cloudflare services from the command line",
+    long_about = "A fast, type-safe Rust CLI for managing Cloudflare DNS, zones, cache, firewall rules, and analytics"
+)]
+pub struct Cli {
+    #[arg(long, global = true)]
+    pub profile: Option<String>,
+
+    #[arg(long, global = true)]
+    pub api_token: Option<String>,
+
+    #[arg(long, global = true)]
+    pub api_key: Option<String>,
+
+    #[arg(long, global = true)]
+    pub api_email: Option<String>,
+
+    #[arg(
+        short,
+        long,
+        global = true,
+        default_value = "table",
+        value_parser = ["table", "json", "csv"]
+    )]
+    pub format: String,
+
+    #[arg(short, long, global = true)]
+    pub quiet: bool,
+
+    #[arg(short, long, global = true)]
+    pub verbose: bool,
+
+    #[command(subcommand)]
+    pub command: Commands,
+}
+
+#[derive(Subcommand)]
+pub enum Commands {
+    /// DNS record management
+    #[command(subcommand)]
+    Dns(dns::DnsCommand),
+
+    /// Zone management
+    #[command(subcommand)]
+    Zone(zone::ZoneCommand),
+
+    /// Cache management
+    #[command(subcommand)]
+    Cache(cache::CacheCommand),
+
+    /// Configuration management
+    #[command(subcommand)]
+    Config(config::ConfigCommand),
+}
+
+pub fn setup_logging(verbose: bool, quiet: bool) {
+    let level = if verbose {
+        "debug"
+    } else if quiet {
+        "warn"
+    } else {
+        "info"
+    };
+
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::new(format!("cfad={}", level)))
+        .with_target(false)
+        .with_thread_ids(false)
+        .init();
+}

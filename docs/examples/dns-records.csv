@@ -1,0 +1,13 @@
+type,name,content,ttl,proxied,priority
+A,@,203.0.113.1,3600,true,
+A,www,203.0.113.1,3600,true,
+A,mail,203.0.113.2,3600,false,
+AAAA,@,2001:db8::1,3600,true,
+AAAA,www,2001:db8::1,3600,true,
+CNAME,blog,www.example.com,3600,false,
+MX,@,mail.example.com,3600,false,10
+MX,@,mail2.example.com,3600,false,20
+TXT,@,"v=spf1 mx ~all",3600,false,
+TXT,_dmarc,"v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com",3600,false,
+NS,@,ns1.cloudflare.com,3600,false,
+NS,@,ns2.cloudflare.com,3600,false,

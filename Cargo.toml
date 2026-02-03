@@ -1,0 +1,65 @@
+[package]
+name = "cfad"
+version = "0.2.0"
+edition = "2021"
+authors = ["David Forbes <davidcforbes@aol.com>"]
+license = "MIT"
+description = "Cloudflare Admin CLI - Rust-based management tool for Cloudflare"
+repository = "https://github.com/davidcforbes/cfad"
+
+[dependencies]
+# CLI
+clap = { version = "4.5", features = ["derive", "cargo"] }
+clap_complete = "4.5"
+
+# Async runtime
+tokio = { version = "1.40", features = ["full"] }
+futures = "0.3"
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json", "stream"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+csv = "1.3"
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+# Configuration
+dirs = "5.0"
+
+# Progress & UI
+indicatif = "0.17"
+colored = "2.1"
+comfy-table = "7.1"
+
+# Utilities
+regex = "1.10"
+chrono = "0.4"
+url = "2.5"
+
+[dev-dependencies]
+# Testing
+assert_cmd = "2.0"
+predicates = "3.1"
+tempfile = "3.13"
+wiremock = "0.6"
+serial_test = "3.1"
+
+[[test]]
+name = "common"
+path = "tests/common/mod.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

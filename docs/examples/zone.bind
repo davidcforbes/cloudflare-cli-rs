@@ -1,0 +1,31 @@
+; BIND Zone File for example.com
+; Example file for CFAD DNS import
+
+$ORIGIN example.com.
+$TTL 3600
+
+; A Records
+@       IN  A       203.0.113.1
+www     IN  A       203.0.113.1
+mail    IN  A       203.0.113.2
+ftp     IN  A       203.0.113.3
+
+; AAAA Records (IPv6)
+@       IN  AAAA    2001:db8::1
+www     IN  AAAA    2001:db8::1
+
+; CNAME Records
+blog    IN  CNAME   www.example.com.
+shop    IN  CNAME   www.example.com.
+
+; MX Records (Mail)
+@       IN  MX  10  mail.example.com.
+@       IN  MX  20  mail2.example.com.
+
+; TXT Records
+@       IN  TXT     "v=spf1 mx ~all"
+_dmarc  IN  TXT     "v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com"
+
+; NS Records (Name Servers)
+@       IN  NS      ns1.cloudflare.com.
+@       IN  NS      ns2.cloudflare.com.
