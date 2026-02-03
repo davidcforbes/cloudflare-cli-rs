@@ -13,77 +13,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  create-release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      version: ${{ steps.get_version.outputs.version }}
-    steps:
-      - name: Get version from tag
-        id: get_version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e # v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-          body: |
-            ## CFAD v${{ steps.get_version.outputs.version }}
-
-            ### Installation
-
-            Download the appropriate binary for your platform below.
-
-            **Windows:**
-            ```powershell
-            # Download and extract
-            Invoke-WebRequest -Uri "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/cfad-${{ steps.get_version.outputs.version }}-x86_64-pc-windows-msvc.zip" -OutFile cfad.zip
-            Expand-Archive cfad.zip
-            Move-Item cfad\cfad.exe ~/.cargo/bin/
-            ```
-
-            **Linux:**
-            ```bash
-            curl -LO https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/cfad-${{ steps.get_version.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz
-            tar xzf cfad-${{ steps.get_version.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz
-            sudo mv cfad /usr/local/bin/
-            ```
-
-            **macOS (Intel):**
-            ```bash
-            curl -LO https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/cfad-${{ steps.get_version.outputs.version }}-x86_64-apple-darwin.tar.gz
-            tar xzf cfad-${{ steps.get_version.outputs.version }}-x86_64-apple-darwin.tar.gz
-            sudo mv cfad /usr/local/bin/
-            ```
-
-            **macOS (Apple Silicon):**
-            ```bash
-            curl -LO https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/cfad-${{ steps.get_version.outputs.version }}-aarch64-apple-darwin.tar.gz
-            tar xzf cfad-${{ steps.get_version.outputs.version }}-aarch64-apple-darwin.tar.gz
-            sudo mv cfad /usr/local/bin/
-            ```
-
-            ### Verify Installation
-            ```bash
-            cfad --version
-            ```
-
-            ### Checksums
-            Verify your download with the checksums in `checksums.txt`.
-
-            ### What's Changed
-            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/master/CHANGELOG.md) for details.
-
   build:
     name: Build ${{ matrix.target }}
-    needs: create-release
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -129,11 +60,16 @@ jobs:
         run: |
           strip target/${{ matrix.target }}/release/cfad
 
+      - name: Get version from tag
+        id: get_version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
       - name: Create archive (Unix)
         if: matrix.archive == 'tar.gz'
         run: |
           cd target/${{ matrix.target }}/release
-          tar czf ../../../cfad-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz cfad
+          tar czf ../../../cfad-${{ steps.get_version.outputs.VERSION }}-${{ matrix.target }}.tar.gz cfad
           cd ../../..
 
       - name: Create archive (Windows)
@@ -141,68 +77,109 @@ jobs:
         shell: pwsh
         run: |
           cd target/${{ matrix.target }}/release
-          Compress-Archive -Path cfad.exe -DestinationPath ../../../cfad-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.zip
+          Compress-Archive -Path cfad.exe -DestinationPath ../../../cfad-${{ steps.get_version.outputs.VERSION }}-${{ matrix.target }}.zip
           cd ../../..
 
       - name: Generate checksum (Unix)
         if: matrix.archive == 'tar.gz'
         run: |
-          shasum -a 256 cfad-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz > cfad-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.tar.gz.sha256
+          shasum -a 256 cfad-${{ steps.get_version.outputs.VERSION }}-${{ matrix.target }}.tar.gz > cfad-${{ steps.get_version.outputs.VERSION }}-${{ matrix.target }}.tar.gz.sha256
 
       - name: Generate checksum (Windows)
         if: matrix.archive == 'zip'
         shell: pwsh
         run: |
-          $hash = Get-FileHash -Algorithm SHA256 cfad-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.zip
-          "$($hash.Hash.ToLower())  cfad-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.zip" | Out-File -Encoding ASCII cfad-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.zip.sha256
+          $hash = Get-FileHash -Algorithm SHA256 cfad-${{ steps.get_version.outputs.VERSION }}-${{ matrix.target }}.zip
+          "$($hash.Hash.ToLower())  cfad-${{ steps.get_version.outputs.VERSION }}-${{ matrix.target }}.zip" | Out-File -Encoding ASCII cfad-${{ steps.get_version.outputs.VERSION }}-${{ matrix.target }}.zip.sha256
 
-      - name: Upload Release Asset (Archive)
-        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload artifacts
+        uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a # v4
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./cfad-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}
-          asset_name: cfad-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}
-          asset_content_type: application/octet-stream
+          name: cfad-${{ matrix.target }}
+          path: |
+            cfad-${{ steps.get_version.outputs.VERSION }}-${{ matrix.target }}.${{ matrix.archive }}
+            cfad-${{ steps.get_version.outputs.VERSION }}-${{ matrix.target }}.${{ matrix.archive }}.sha256
 
-      - name: Upload Release Asset (Checksum)
-        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./cfad-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}.sha256
-          asset_name: cfad-${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}.sha256
-          asset_content_type: text/plain
-
-  checksums:
-    name: Generate Checksums File
-    needs: [create-release, build]
+  release:
+    name: Create Release
+    needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
       - name: Download all artifacts
-        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
         with:
           path: artifacts
+          merge-multiple: true
 
       - name: Create checksums file
         run: |
-          echo "# CFAD v${{ needs.create-release.outputs.version }} Checksums" > checksums.txt
+          cd artifacts
+          echo "# CFAD v${{ steps.get_version.outputs.VERSION }} Checksums" > checksums.txt
           echo "" >> checksums.txt
           echo "Verify your download:" >> checksums.txt
           echo '```bash' >> checksums.txt
           echo "shasum -a 256 -c checksums.txt" >> checksums.txt
           echo '```' >> checksums.txt
           echo "" >> checksums.txt
-          find . -name "*.sha256" -exec cat {} \; >> checksums.txt
+          cat *.sha256 >> checksums.txt
+          cd ..
 
-      - name: Upload checksums file
-        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Release
+        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./checksums.txt
-          asset_name: checksums.txt
-          asset_content_type: text/plain
+          draft: false
+          prerelease: false
+          files: artifacts/*
+          body: |
+            ## CFAD v${{ steps.get_version.outputs.VERSION }}
+
+            ### Installation
+
+            Download the appropriate binary for your platform below.
+
+            **Windows:**
+            ```powershell
+            # Download and extract
+            Invoke-WebRequest -Uri "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/cfad-${{ steps.get_version.outputs.VERSION }}-x86_64-pc-windows-msvc.zip" -OutFile cfad.zip
+            Expand-Archive cfad.zip
+            Move-Item cfad\cfad.exe ~/.cargo/bin/
+            ```
+
+            **Linux:**
+            ```bash
+            curl -LO https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/cfad-${{ steps.get_version.outputs.VERSION }}-x86_64-unknown-linux-gnu.tar.gz
+            tar xzf cfad-${{ steps.get_version.outputs.VERSION }}-x86_64-unknown-linux-gnu.tar.gz
+            sudo mv cfad /usr/local/bin/
+            ```
+
+            **macOS (Intel):**
+            ```bash
+            curl -LO https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/cfad-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin.tar.gz
+            tar xzf cfad-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin.tar.gz
+            sudo mv cfad /usr/local/bin/
+            ```
+
+            **macOS (Apple Silicon):**
+            ```bash
+            curl -LO https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/cfad-${{ steps.get_version.outputs.VERSION }}-aarch64-apple-darwin.tar.gz
+            tar xzf cfad-${{ steps.get_version.outputs.VERSION }}-aarch64-apple-darwin.tar.gz
+            sudo mv cfad /usr/local/bin/
+            ```
+
+            ### Verify Installation
+            ```bash
+            cfad --version
+            ```
+
+            ### Checksums
+            Verify your download with the checksums in `checksums.txt`.
+
+            ### What's Changed
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/master/CHANGELOG.md) for details.
