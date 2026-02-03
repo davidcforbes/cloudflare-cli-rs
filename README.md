@@ -74,18 +74,6 @@ sudo mv cfad /usr/local/bin/
 cfad --version
 ```
 
-#### Linux (Static binary - works everywhere)
-
-```bash
-# Download and install (no glibc dependency)
-curl -LO https://github.com/davidcforbes/cfad/releases/latest/download/cfad-0.2.0-x86_64-unknown-linux-musl.tar.gz
-tar xzf cfad-0.2.0-x86_64-unknown-linux-musl.tar.gz
-sudo mv cfad /usr/local/bin/
-
-# Verify installation
-cfad --version
-```
-
 #### macOS (Intel)
 
 ```bash
@@ -837,15 +825,23 @@ cargo fmt
 Run all quality checks before pushing:
 
 ```bash
-# Windows
-.\scripts\quality-check.ps1
+# Using Claude Code (recommended)
+/quality
 
-# Linux/macOS
-./scripts/quality-check.sh
+# Using scripts
+# Windows: .\scripts\quality-check.ps1
+# Linux/macOS: ./scripts/quality-check.sh
 
 # Using Make
 make quality-check
 ```
+
+The `/quality` Claude Skill runs comprehensive checks:
+- Code formatting (cargo fmt)
+- Linting (cargo clippy with zero warnings)
+- Tests (all 68 tests)
+- Security audit (cargo audit)
+- Release build verification
 
 **See [DEVELOPMENT.md](docs/DEVELOPMENT.md) for:**
 
@@ -859,23 +855,23 @@ make quality-check
 
 ## Dependencies
 
-### Core Dependencies (49 total)
+### Core Dependencies (14 production dependencies - 30% reduction)
 
-- **CLI:** clap 4.5, clap_complete 4.5
-- **Async:** tokio 1.40, futures 0.3
-- **HTTP:** reqwest 0.12
-- **Serialization:** serde 1.0, serde_json 1.0, toml 0.8
-- **Error Handling:** thiserror 2.0, anyhow 1.0
+- **CLI:** clap 4.5
+- **Async:** tokio 1.40
+- **HTTP:** reqwest 0.13
+- **Serialization:** serde 1.0, serde_json 1.0, toml 0.9, csv 1.3
+- **Error Handling:** thiserror 2.0
 - **Logging:** tracing 0.1, tracing-subscriber 0.3
-- **Config:** dirs 5.0
-- **UI:** indicatif 0.17, colored 2.1, comfy-table 7.1
-- **Utils:** regex 1.10, chrono 0.4, url 2.5
+- **Config:** dirs 6.0
+- **UI:** comfy-table 7.1
+- **Utils:** regex 1.10, url 2.5
 
 ### Dev Dependencies
 
-- **Testing:** assert_cmd 2.0, predicates 3.1, tempfile 3.13
 - **Mocking:** wiremock 0.6
-- **Sync:** serial_test 3.1
+
+**Removed unused dependencies:** chrono, futures, anyhow, colored, clap_complete, indicatif, assert_cmd, predicates, tempfile, serial_test
 
 ---
 

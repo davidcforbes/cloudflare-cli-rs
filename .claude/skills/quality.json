@@ -1,0 +1,13 @@
+{
+  "name": "quality",
+  "version": "1.0.0",
+  "description": "Run comprehensive code quality and complexity checks to maintain GitHub badges",
+  "author": "CFAD Development Team",
+  "invocable": "user",
+  "prompts": [
+    {
+      "role": "user",
+      "content": "Run comprehensive code quality checks for the CFAD project to ensure all GitHub badges (CI, Codacy, CodeCov, Dependencies) remain green.\n\nPerform the following checks in order:\n\n1. **Code Formatting Check**\n   - Run: `cargo fmt --all -- --check`\n   - If fails: Show what needs formatting and offer to fix with `cargo fmt --all`\n\n2. **Clippy Lints (Zero Warnings Policy)**\n   - Run: `cargo clippy --all-targets --all-features -- -D warnings`\n   - If fails: Show warnings and offer to fix common issues\n\n3. **Test Suite (All 68 Tests)**\n   - Run: `cargo test`\n   - Show test summary and any failures\n   - Verify all 68 tests pass (54 unit + 14 integration)\n\n4. **Security Audit**\n   - Run: `cargo audit`\n   - Report any security vulnerabilities\n   - Check deps.rs status for dependency issues\n\n5. **Build Verification**\n   - Run: `cargo build --release`\n   - Verify successful release build\n   - Report binary size and build time\n\n6. **Complexity Check**\n   - Verify cyclomatic complexity ≤8 for all functions\n   - No functions should exceed complexity threshold\n\n**Summary Report:**\nProvide a comprehensive summary with:\n- ✅ All checks passed\n- ❌ Failed checks with recommendations\n- 📊 Metrics: test count, warnings, errors\n- 🎯 GitHub badge status (will they stay green?)\n- 💡 Next steps if any issues found\n\n**Quality Standards:**\n- Zero compilation errors\n- Zero compilation warnings\n- Zero clippy warnings\n- All 68 tests passing\n- No security vulnerabilities\n- Cyclomatic complexity ≤8\n- Clean dependency tree\n\nIf any check fails, offer to fix the issues automatically or provide clear guidance on how to fix them manually."
+    }
+  ]
+}
