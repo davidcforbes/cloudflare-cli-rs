@@ -3,7 +3,7 @@
 A fast, type-safe Rust CLI for managing Cloudflare DNS, zones, and cache from the command line.
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]()
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)]()
+[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/davidcforbes/cloudflare-cli-rs/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
 > **Current Status:** v0.2.0 - DNS features complete (show, update, delete, import)
@@ -491,7 +491,7 @@ default_zone = "staging-example.com"
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         CFAD CLI (v0.1.0)                       │
+│                         CFAD CLI (v0.2.0)                       │
 │                                                                  │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
 │  │   Config     │  │  Command     │  │   Output     │          │

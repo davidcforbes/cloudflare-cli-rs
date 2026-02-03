@@ -83,7 +83,7 @@ impl CloudflareClient {
             "Content-Type",
             header::HeaderValue::from_static("application/json"),
         );
-        headers.insert("User-Agent", header::HeaderValue::from_static("cfad/0.1.0"));
+        headers.insert("User-Agent", header::HeaderValue::from_static("cfad/0.2.0"));
 
         let http_client = HttpClient::builder()
             .default_headers(headers)
