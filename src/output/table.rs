@@ -440,7 +440,7 @@ mod tests {
             name_servers: vec![],
             original_name_servers: vec![],
             owner: Owner {
-                id: "owner123".to_string(),
+                id: Some("owner123".to_string()),
                 owner_type: "user".to_string(),
                 email: Some("user@example.com".to_string()),
             },
@@ -466,7 +466,7 @@ mod tests {
             name_servers: vec![],
             original_name_servers: vec![],
             owner: Owner {
-                id: "owner123".to_string(),
+                id: Some("owner123".to_string()),
                 owner_type: "user".to_string(),
                 email: Some("user@example.com".to_string()),
             },

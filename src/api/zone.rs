@@ -7,7 +7,9 @@ pub struct Zone {
     pub status: String,
     pub paused: bool,
     pub development_mode: u32,
+    #[serde(default)]
     pub name_servers: Vec<String>,
+    #[serde(default)]
     pub original_name_servers: Vec<String>,
     pub owner: Owner,
     pub account: Account,
@@ -17,7 +19,8 @@ pub struct Zone {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Owner {
-    pub id: String,
+    #[serde(default)]
+    pub id: Option<String>,
     #[serde(rename = "type")]
     pub owner_type: String,
     pub email: Option<String>,
