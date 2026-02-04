@@ -5,14 +5,10 @@
 # The advisories section is for checking security vulnerabilities
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
-# Deny crates with security vulnerabilities
-vulnerability = "deny"
-# Warn about unmaintained crates (none = don't check, workspace = only direct deps)
+# Check for unmaintained crates (workspace = only direct deps)
 unmaintained = "workspace"
 # Deny yanked (withdrawn) crates
 yanked = "deny"
-# Warn about security notices
-notice = "workspace"
 ignore = [
     # Add advisory IDs to ignore here
     # "RUSTSEC-0000-0000",
@@ -20,7 +16,6 @@ ignore = [
 
 [licenses]
 # The licenses section is for checking license compliance
-unlicensed = "deny"
 allow = [
     "MIT",
     "Apache-2.0",
@@ -30,12 +25,6 @@ allow = [
     "ISC",
     "Unicode-DFS-2016",
 ]
-deny = [
-    # "GPL-3.0",  # Uncomment to deny GPL licenses
-]
-copyleft = "warn"
-allow-osi-fsf-free = "neither"
-default = "deny"
 confidence-threshold = 0.8
 
 [bans]
@@ -43,12 +32,8 @@ confidence-threshold = 0.8
 multiple-versions = "warn"
 wildcards = "allow"
 highlight = "all"
-skip = [
-    # Add crate names to skip version checks
-]
-skip-tree = [
-    # Add crate names to skip entire dependency trees
-]
+skip = []
+skip-tree = []
 
 [sources]
 # The sources section is for checking where dependencies come from
