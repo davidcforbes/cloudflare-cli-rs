@@ -190,3 +190,99 @@ async fn test_client_api_error_response() {
 
     assert!(result.is_err());
 }
+
+#[tokio::test]
+async fn test_client_patch_success() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("PATCH"))
+        .and(path("/test/123"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true,
+            "result": {"id": "123", "patched": true},
+            "errors": [],
+            "messages": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let auth = AuthMethod::ApiToken("test_token".to_string());
+    let client = CloudflareClient::new_with_base_url(auth, mock_server.uri()).unwrap();
+
+    let payload = serde_json::json!({"field": "value"});
+    let result: Result<cfad::client::CfResponse<serde_json::Value>, _> =
+        client.patch("/test/123", payload).await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_client_cf_response_errors() {
+    let mock_server = MockServer::start().await;
+
+    // Return 200 but with success: false and errors in response
+    Mock::given(method("GET"))
+        .and(path("/test"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": false,
+            "result": null,
+            "errors": [
+                {
+                    "code": 1003,
+                    "message": "Invalid zone ID"
+                },
+                {
+                    "code": 1004,
+                    "message": "Another error"
+                }
+            ],
+            "messages": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let auth = AuthMethod::ApiToken("test_token".to_string());
+    let client = CloudflareClient::new_with_base_url(auth, mock_server.uri()).unwrap();
+
+    let result: Result<cfad::client::CfResponse<serde_json::Value>, _> = client.get("/test").await;
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    let err_msg = format!("{}", err);
+    assert!(err_msg.contains("1003") || err_msg.contains("Invalid zone ID"));
+}
+
+#[test]
+fn test_client_new_default_url() {
+    let auth = AuthMethod::ApiToken("test_token".to_string());
+    let client = CloudflareClient::new(auth);
+    assert!(client.is_ok());
+}
+
+#[tokio::test]
+async fn test_client_invalid_json_response() {
+    let mock_server = MockServer::start().await;
+
+    // Return invalid JSON to trigger reqwest JSON parsing error
+    Mock::given(method("GET"))
+        .and(path("/test"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("not valid json at all"))
+        .mount(&mock_server)
+        .await;
+
+    let auth = AuthMethod::ApiToken("test_token".to_string());
+    let client = CloudflareClient::new_with_base_url(auth, mock_server.uri()).unwrap();
+
+    let result: Result<cfad::client::CfResponse<serde_json::Value>, _> = client.get("/test").await;
+
+    assert!(result.is_err());
+    // This should be an Http error (reqwest JSON parse error)
+    if let Err(e) = result {
+        // Verify it's categorized as Network (which is what Http errors map to)
+        use cfad::error::CfadError;
+        if let CfadError::Http(_) = e {
+            use cfad::error::ErrorCategory;
+            assert!(matches!(e.category(), ErrorCategory::Network));
+        }
+    }
+}

@@ -335,4 +335,81 @@ mod tests {
         assert!(display.contains("Zone"));
         assert!(display.contains("example.com"));
     }
+
+    #[test]
+    fn test_error_category_config() {
+        let error = CfadError::config("Invalid config");
+        assert!(matches!(error.category(), ErrorCategory::Configuration));
+    }
+
+    #[test]
+    fn test_error_category_timeout() {
+        let error = CfadError::Timeout(Duration::from_secs(30));
+        assert!(matches!(error.category(), ErrorCategory::Timeout));
+    }
+
+    #[test]
+    fn test_error_category_io() {
+        let error = CfadError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "file not found",
+        ));
+        assert!(matches!(error.category(), ErrorCategory::FileSystem));
+    }
+
+    #[test]
+    fn test_error_category_json() {
+        let json_str = "{invalid json";
+        let result: std::result::Result<serde_json::Value, serde_json::Error> =
+            serde_json::from_str(json_str);
+        if let Err(e) = result {
+            let error = CfadError::from(e);
+            assert!(matches!(error.category(), ErrorCategory::Serialization));
+        }
+    }
+
+    #[test]
+    fn test_error_category_url_parse() {
+        use url::Url;
+        let result = Url::parse("not a url");
+        if let Err(e) = result {
+            let error = CfadError::UrlParse(e);
+            assert!(matches!(error.category(), ErrorCategory::Validation));
+        }
+    }
+
+    #[test]
+    fn test_error_category_other() {
+        let error = CfadError::Other("Something went wrong".to_string());
+        assert!(matches!(error.category(), ErrorCategory::Other));
+    }
+
+    #[test]
+    fn test_error_category_toml_de() {
+        // Test TomlDe error category
+        let toml_str = "invalid = [toml";
+        let result: std::result::Result<toml::Value, toml::de::Error> =
+            toml::from_str(toml_str);
+        if let Err(e) = result {
+            let error = CfadError::from(e);
+            assert!(matches!(error.category(), ErrorCategory::Serialization));
+        }
+    }
+
+    #[test]
+    fn test_error_category_http() {
+        // Create a simple reqwest error by attempting to parse an invalid URL
+        let url_result = reqwest::Url::parse("not a valid url");
+        assert!(url_result.is_err());
+
+        // Test with a client builder error
+        let client_result = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(0))
+            .build();
+
+        if let Err(e) = client_result {
+            let error = CfadError::from(e);
+            assert!(matches!(error.category(), ErrorCategory::Network));
+        }
+    }
 }

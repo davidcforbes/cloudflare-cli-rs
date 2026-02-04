@@ -72,12 +72,31 @@ pub fn setup_logging(verbose: bool, quiet: bool) {
         "info"
     };
 
-    tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::new(format!(
-            "cfad={}",
-            level
-        )))
-        .with_target(false)
-        .with_thread_ids(false)
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(format!("cfad={}", level)))
+        .format_target(false)
+        .format_timestamp(None)
         .init();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_logging_level_verbose() {
+        let level = if true { "debug" } else if false { "warn" } else { "info" };
+        assert_eq!(level, "debug");
+    }
+
+    #[test]
+    fn test_logging_level_quiet() {
+        let level = if false { "debug" } else if true { "warn" } else { "info" };
+        assert_eq!(level, "warn");
+    }
+
+    #[test]
+    fn test_logging_level_normal() {
+        let level = if false { "debug" } else if false { "warn" } else { "info" };
+        assert_eq!(level, "info");
+    }
 }

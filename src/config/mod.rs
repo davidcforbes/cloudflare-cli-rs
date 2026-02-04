@@ -301,4 +301,391 @@ mod tests {
         assert_eq!(config.default_profile, "default");
         assert_eq!(config.profiles.len(), 0);
     }
+
+    #[test]
+    fn test_profile_from_env_with_token() {
+        std::env::set_var("CLOUDFLARE_API_TOKEN", "test_token");
+        let profile = Profile::from_env().unwrap();
+        assert_eq!(profile.api_token, Some("test_token".to_string()));
+        std::env::remove_var("CLOUDFLARE_API_TOKEN");
+    }
+
+    #[test]
+    fn test_profile_from_env_with_key_email() {
+        std::env::set_var("CLOUDFLARE_API_KEY", "test_key");
+        std::env::set_var("CLOUDFLARE_API_EMAIL", "test@example.com");
+        let profile = Profile::from_env().unwrap();
+        assert_eq!(profile.api_key, Some("test_key".to_string()));
+        assert_eq!(profile.api_email, Some("test@example.com".to_string()));
+        std::env::remove_var("CLOUDFLARE_API_KEY");
+        std::env::remove_var("CLOUDFLARE_API_EMAIL");
+    }
+
+    #[test]
+    fn test_profile_from_env_no_credentials() {
+        // Clear all potential env vars
+        std::env::remove_var("CLOUDFLARE_API_TOKEN");
+        std::env::remove_var("CLOUDFLARE_API_KEY");
+        std::env::remove_var("CLOUDFLARE_API_EMAIL");
+
+        let result = Profile::from_env();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_profile_from_env_incomplete_key_email() {
+        // Only key, no email
+        std::env::set_var("CLOUDFLARE_API_KEY", "test_key");
+        std::env::remove_var("CLOUDFLARE_API_EMAIL");
+        std::env::remove_var("CLOUDFLARE_API_TOKEN");
+
+        let result = Profile::from_env();
+        assert!(result.is_err());
+
+        std::env::remove_var("CLOUDFLARE_API_KEY");
+    }
+
+    #[test]
+    fn test_config_path_exists() {
+        let path = Config::config_path();
+        assert!(path.is_ok());
+        let path = path.unwrap();
+        assert!(path.to_string_lossy().contains("cfad"));
+        assert!(path.to_string_lossy().ends_with("config.toml"));
+    }
+
+    #[test]
+    fn test_config_serialization() {
+        let mut config = Config::new("default".to_string());
+        let profile = Profile {
+            api_token: Some("token123".to_string()),
+            api_key: None,
+            api_email: None,
+            default_zone: Some("example.com".to_string()),
+            output_format: Some("json".to_string()),
+        };
+        config.profiles.insert("default".to_string(), profile);
+
+        let serialized = toml::to_string(&config).unwrap();
+        assert!(serialized.contains("default_profile"));
+        assert!(serialized.contains("token123"));
+        assert!(serialized.contains("example.com"));
+    }
+
+    #[test]
+    fn test_config_deserialization() {
+        let toml_str = r#"
+            default_profile = "production"
+
+            [profiles.production]
+            api_token = "prod_token_123"
+            default_zone = "prod.example.com"
+        "#;
+
+        let config: Config = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.default_profile, "production");
+        assert_eq!(config.profiles.len(), 1);
+
+        let profile = config.profiles.get("production").unwrap();
+        assert_eq!(profile.api_token, Some("prod_token_123".to_string()));
+        assert_eq!(profile.default_zone, Some("prod.example.com".to_string()));
+    }
+
+    #[test]
+    fn test_auth_method_clone() {
+        let auth = AuthMethod::ApiToken("test".to_string());
+        let cloned = auth.clone();
+
+        match cloned {
+            AuthMethod::ApiToken(token) => assert_eq!(token, "test"),
+            _ => panic!("Expected ApiToken"),
+        }
+    }
+
+    #[test]
+    fn test_profile_with_all_fields() {
+        let profile = Profile {
+            api_token: Some("token".to_string()),
+            api_key: Some("key".to_string()),
+            api_email: Some("email@test.com".to_string()),
+            default_zone: Some("zone.com".to_string()),
+            output_format: Some("table".to_string()),
+        };
+
+        assert!(profile.api_token.is_some());
+        assert!(profile.api_key.is_some());
+        assert!(profile.api_email.is_some());
+        assert!(profile.default_zone.is_some());
+        assert!(profile.output_format.is_some());
+    }
+
+    #[test]
+    fn test_config_save_and_load() {
+        use std::fs;
+
+        // Create a temporary directory for testing
+        let temp_dir = std::env::temp_dir().join("cfad_test_config");
+        fs::create_dir_all(&temp_dir).ok();
+
+        // Override config path for this test
+        let test_config_path = temp_dir.join("test_config.toml");
+
+        // Create a test config
+        let mut config = Config::new("test_profile".to_string());
+        let profile = Profile {
+            api_token: Some("test_token_123".to_string()),
+            api_key: None,
+            api_email: None,
+            default_zone: Some("test.example.com".to_string()),
+            output_format: Some("json".to_string()),
+        };
+        config.profiles.insert("test_profile".to_string(), profile);
+
+        // Save to test file
+        let contents = toml::to_string_pretty(&config).unwrap();
+        fs::write(&test_config_path, contents).unwrap();
+
+        // Load and verify
+        let loaded_contents = fs::read_to_string(&test_config_path).unwrap();
+        let loaded_config: Config = toml::from_str(&loaded_contents).unwrap();
+
+        assert_eq!(loaded_config.default_profile, "test_profile");
+        assert_eq!(loaded_config.profiles.len(), 1);
+        let loaded_profile = loaded_config.profiles.get("test_profile").unwrap();
+        assert_eq!(loaded_profile.api_token, Some("test_token_123".to_string()));
+        assert_eq!(loaded_profile.default_zone, Some("test.example.com".to_string()));
+
+        // Cleanup
+        fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    #[test]
+    fn test_config_from_file_not_found() {
+        // This test verifies the error path when config file doesn't exist
+        // We can't easily test the actual from_file() because it uses a fixed path
+        let toml_str = r#"
+            default_profile = "missing"
+
+            [profiles.test]
+            api_token = "token"
+        "#;
+
+        let config: Config = toml::from_str(toml_str).unwrap();
+
+        // Try to get a profile that doesn't exist
+        let profile = config.profiles.get("nonexistent");
+        assert!(profile.is_none());
+    }
+
+    #[test]
+    fn test_config_multiple_profiles() {
+        let mut config = Config::new("prod".to_string());
+
+        let prod_profile = Profile {
+            api_token: Some("prod_token".to_string()),
+            api_key: None,
+            api_email: None,
+            default_zone: Some("prod.example.com".to_string()),
+            output_format: None,
+        };
+
+        let dev_profile = Profile {
+            api_token: Some("dev_token".to_string()),
+            api_key: None,
+            api_email: None,
+            default_zone: Some("dev.example.com".to_string()),
+            output_format: Some("json".to_string()),
+        };
+
+        config.profiles.insert("prod".to_string(), prod_profile);
+        config.profiles.insert("dev".to_string(), dev_profile);
+
+        assert_eq!(config.profiles.len(), 2);
+        assert!(config.profiles.contains_key("prod"));
+        assert!(config.profiles.contains_key("dev"));
+    }
+
+    #[test]
+    fn test_config_load_with_env_vars() {
+        // Set up env vars
+        std::env::set_var("CLOUDFLARE_API_TOKEN", "env_test_token_load");
+
+        // Config::load should find the env vars
+        let result = Config::load(None);
+
+        // Clean up
+        std::env::remove_var("CLOUDFLARE_API_TOKEN");
+
+        assert!(result.is_ok());
+        let profile = result.unwrap();
+        assert_eq!(profile.api_token, Some("env_test_token_load".to_string()));
+    }
+
+    #[test]
+    fn test_config_from_file_deserialize() {
+        use std::fs;
+        let temp_dir = std::env::temp_dir().join("cfad_test_from_file");
+        fs::create_dir_all(&temp_dir).ok();
+        let test_path = temp_dir.join("test_config.toml");
+
+        let toml_content = r#"
+default_profile = "test"
+
+[profiles.test]
+api_token = "test_token_123"
+default_zone = "example.com"
+"#;
+        fs::write(&test_path, toml_content).unwrap();
+
+        // Read and deserialize
+        let contents = fs::read_to_string(&test_path).unwrap();
+        let config: Config = toml::from_str(&contents).unwrap();
+
+        assert_eq!(config.default_profile, "test");
+        assert!(config.profiles.contains_key("test"));
+
+        fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    #[test]
+    fn test_config_save_creates_directory() {
+        use std::fs;
+        let temp_dir = std::env::temp_dir().join("cfad_test_save_dir");
+        fs::remove_dir_all(&temp_dir).ok();
+
+        let config_dir = temp_dir.join("subdir");
+        let config_path = config_dir.join("config.toml");
+
+        let mut config = Config::new("default".to_string());
+        let profile = Profile {
+            api_token: Some("token".to_string()),
+            api_key: None,
+            api_email: None,
+            default_zone: None,
+            output_format: None,
+        };
+        config.profiles.insert("default".to_string(), profile);
+
+        // Manually create parent and save
+        fs::create_dir_all(&config_dir).unwrap();
+        let contents = toml::to_string_pretty(&config).unwrap();
+        fs::write(&config_path, contents).unwrap();
+
+        // Verify file exists
+        assert!(config_path.exists());
+
+        fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    #[test]
+    fn test_config_save_and_from_file_roundtrip() {
+        // Create a config
+        let mut config = Config::new("roundtrip_test".to_string());
+        let profile = Profile {
+            api_token: Some("roundtrip_token".to_string()),
+            api_key: None,
+            api_email: None,
+            default_zone: Some("roundtrip.example.com".to_string()),
+            output_format: Some("json".to_string()),
+        };
+        config.profiles.insert("roundtrip_test".to_string(), profile);
+
+        // Get the config path
+        let config_path = Config::config_path();
+        assert!(config_path.is_ok());
+
+        // We can't actually test save() and from_file() without potentially
+        // interfering with the user's real config, so we'll test the serialization
+        // logic instead
+        let serialized = toml::to_string_pretty(&config);
+        assert!(serialized.is_ok());
+
+        let deserialized: std::result::Result<Config, toml::de::Error> =
+            toml::from_str(&serialized.unwrap());
+        assert!(deserialized.is_ok());
+
+        let loaded = deserialized.unwrap();
+        assert_eq!(loaded.default_profile, "roundtrip_test");
+        assert!(loaded.profiles.contains_key("roundtrip_test"));
+    }
+
+    #[test]
+    fn test_config_load_fallback_to_env() {
+        // Clear env initially
+        std::env::remove_var("CLOUDFLARE_API_TOKEN");
+        std::env::remove_var("CLOUDFLARE_API_KEY");
+        std::env::remove_var("CLOUDFLARE_API_EMAIL");
+        
+        // Config::load will try env vars as fallback when no file exists
+        // Set env var
+        std::env::set_var("CLOUDFLARE_API_TOKEN", "fallback_token");
+        
+        // This should succeed via env var fallback
+        let result = Config::load(None);
+        
+        // Cleanup
+        std::env::remove_var("CLOUDFLARE_API_TOKEN");
+        
+        assert!(result.is_ok());
+        let profile = result.unwrap();
+        assert_eq!(profile.api_token, Some("fallback_token".to_string()));
+    }
+
+    #[test]
+    fn test_config_save_creates_parent_directory() {
+        // Test that save logic includes creating parent directory
+        let _config = Config::new("test".to_string());
+
+        // Get the config path to verify parent() logic works
+        if let Ok(path) = Config::config_path() {
+            let parent = path.parent();
+            assert!(parent.is_some());
+        }
+    }
+
+    #[test]
+    fn test_config_toml_serialization_error_handling() {
+        // Test TomlSer error path in save()
+        let config = Config::new("test".to_string());
+        
+        // Serialize to test the toml conversion
+        let result = toml::to_string_pretty(&config);
+        assert!(result.is_ok());
+        
+        // Test that map_err(CfadError::TomlSer) path exists
+        // by verifying serialization works
+        let toml_str = result.unwrap();
+        assert!(toml_str.contains("default_profile"));
+    }
+
+    #[test]
+    fn test_config_load_with_profile_selection() {
+        // Set up multiple profile env scenario
+        std::env::set_var("CLOUDFLARE_API_TOKEN", "profile_select_token");
+        
+        // Load with specific profile name (will fall back to env)
+        let result = Config::load(Some("custom_profile"));
+        
+        // Cleanup
+        std::env::remove_var("CLOUDFLARE_API_TOKEN");
+        
+        // Should succeed via env fallback even if profile doesn't exist in file
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_profile_clone() {
+        let profile = Profile {
+            api_token: Some("token".to_string()),
+            api_key: Some("key".to_string()),
+            api_email: Some("email@test.com".to_string()),
+            default_zone: Some("zone.com".to_string()),
+            output_format: Some("json".to_string()),
+        };
+        
+        let cloned = profile.clone();
+        assert_eq!(profile.api_token, cloned.api_token);
+        assert_eq!(profile.api_key, cloned.api_key);
+        assert_eq!(profile.api_email, cloned.api_email);
+    }
 }

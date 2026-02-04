@@ -2,8 +2,8 @@
 #![allow(unused_imports)]
 
 use clap::Parser;
+use log::error;
 use std::process;
-use tracing::error;
 
 mod cli;
 mod client;
