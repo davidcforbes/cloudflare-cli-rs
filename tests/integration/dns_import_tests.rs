@@ -13,7 +13,7 @@ async fn create_test_client(mock_server: &MockServer) -> CloudflareClient {
 
 fn create_temp_file(content: &str, extension: &str) -> PathBuf {
     let temp_dir = std::env::temp_dir().join("cfad_dns_import_tests");
-    fs::create_dir_all(&temp_dir).ok();
+    fs::create_dir_all(&temp_dir).expect("Failed to create temp dir");
 
     // Use a unique filename based on process ID and high-precision timestamp
     let pid = std::process::id();
@@ -22,7 +22,11 @@ fn create_temp_file(content: &str, extension: &str) -> PathBuf {
         .unwrap()
         .as_nanos();
     let file_path = temp_dir.join(format!("test_{}_{}.{}", pid, nanos, extension));
-    fs::write(&file_path, content).unwrap();
+
+    eprintln!("Creating temp file: {:?}", file_path);
+    fs::write(&file_path, content).expect("Failed to write temp file");
+    eprintln!("File exists: {}", file_path.exists());
+
     file_path
 }
 
