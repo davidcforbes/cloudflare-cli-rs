@@ -4,6 +4,7 @@ A fast, type-safe Rust CLI for managing Cloudflare DNS, zones, and cache from th
 
 [![CI](https://github.com/davidcforbes/cloudflare-cli-rs/workflows/CI/badge.svg)](https://github.com/davidcforbes/cloudflare-cli-rs/actions/workflows/ci.yml)
 [![Release](https://github.com/davidcforbes/cloudflare-cli-rs/workflows/Release/badge.svg)](https://github.com/davidcforbes/cloudflare-cli-rs/actions/workflows/release.yml)
+[![Security Audit](https://github.com/davidcforbes/cloudflare-cli-rs/workflows/Security%20Audit/badge.svg)](https://github.com/davidcforbes/cloudflare-cli-rs/actions/workflows/security-audit.yml)
 [![codecov](https://codecov.io/gh/davidcforbes/cloudflare-cli-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/davidcforbes/cloudflare-cli-rs)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/098be488ba4a46199247ae6fde2b8a71)](https://app.codacy.com/gh/davidcforbes/cloudflare-cli-rs/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![GitHub release](https://img.shields.io/github/release/davidcforbes/cloudflare-cli-rs.svg)](https://github.com/davidcforbes/cloudflare-cli-rs/releases)
