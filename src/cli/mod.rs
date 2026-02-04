@@ -79,4 +79,3 @@ pub fn setup_logging(verbose: bool, quiet: bool) {
     .format_timestamp(None)
     .init();
 }
-

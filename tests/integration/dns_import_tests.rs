@@ -21,7 +21,10 @@ fn create_temp_file(content: &str, extension: &str) -> PathBuf {
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let file_path = temp_dir.join(format!("test_import_{:?}_{}.{}", thread_id, timestamp, extension));
+    let file_path = temp_dir.join(format!(
+        "test_import_{:?}_{}.{}",
+        thread_id, timestamp, extension
+    ));
     fs::write(&file_path, content).unwrap();
     file_path
 }
