@@ -1,4 +1,6 @@
+use crate::api::d1::D1Database;
 use crate::api::dns::DnsRecord;
+use crate::api::r2::{R2Bucket, R2CustomDomain, R2EventNotification, R2Metrics, R2MigrationJob};
 use crate::api::zone::Zone;
 use comfy_table::{presets::UTF8_FULL, Attribute, Cell, Color, ContentArrangement, Table};
 
@@ -103,6 +105,249 @@ pub fn print_zones(zones: &[Zone]) {
 
     println!("{}", table);
     println!("\nTotal: {} zones", zones.len());
+}
+
+pub fn print_d1_databases(databases: &[D1Database]) {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec![
+            Cell::new("Name")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Tables")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Size")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("ID")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+        ]);
+
+    for db in databases {
+        table.add_row(vec![
+            Cell::new(&db.name),
+            Cell::new(db.num_tables.to_string()),
+            Cell::new(format_bytes(db.file_size)),
+            Cell::new(&db.uuid[..8.min(db.uuid.len())]),
+        ]);
+    }
+
+    println!("{}", table);
+    println!("\nTotal: {} databases", databases.len());
+}
+
+pub fn print_d1_database(db: &D1Database) {
+    println!("\nD1 Database Details:\n");
+    println!("  ID: {}", db.uuid);
+    println!("  Name: {}", db.name);
+    println!("  Version: {}", db.version);
+    println!("  Tables: {}", db.num_tables);
+    println!("  Size: {}", format_bytes(db.file_size));
+    println!("  Created: {}", db.created_at);
+}
+
+pub fn print_r2_buckets(buckets: &[R2Bucket]) {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec![
+            Cell::new("Name")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Location")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Created")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+        ]);
+
+    for bucket in buckets {
+        table.add_row(vec![
+            Cell::new(&bucket.name),
+            Cell::new(bucket.location.as_deref().unwrap_or("-")),
+            Cell::new(&bucket.creation_date),
+        ]);
+    }
+
+    println!("{}", table);
+    println!("\nTotal: {} buckets", buckets.len());
+}
+
+pub fn print_r2_bucket(bucket: &R2Bucket) {
+    println!("\nR2 Bucket Details:\n");
+    println!("  Name: {}", bucket.name);
+    if let Some(location) = &bucket.location {
+        println!("  Location: {}", location);
+    }
+    if let Some(storage_class) = &bucket.storage_class {
+        println!("  Storage Class: {}", storage_class);
+    }
+    println!("  Created: {}", bucket.creation_date);
+}
+
+pub fn print_r2_custom_domains(domains: &[R2CustomDomain]) {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec![
+            Cell::new("Domain")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Status")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Enabled")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+        ]);
+
+    for domain in domains {
+        let status_cell = Cell::new(&domain.status);
+        let status_cell = if domain.status == "active" {
+            status_cell.fg(Color::Green)
+        } else {
+            status_cell.fg(Color::Yellow)
+        };
+
+        table.add_row(vec![
+            Cell::new(&domain.domain),
+            status_cell,
+            Cell::new(if domain.enabled { "✓" } else { "✗" }),
+        ]);
+    }
+
+    println!("{}", table);
+    println!("\nTotal: {} domains", domains.len());
+}
+
+pub fn print_r2_metrics(metrics: &R2Metrics) {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec![
+            Cell::new("Bucket")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Objects")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Storage")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+        ]);
+
+    let mut total_objects = 0u64;
+    let mut total_storage = 0u64;
+
+    for bucket in &metrics.buckets {
+        table.add_row(vec![
+            Cell::new(&bucket.bucket_name),
+            Cell::new(bucket.object_count.to_string()),
+            Cell::new(format_bytes(bucket.storage_bytes)),
+        ]);
+        total_objects += bucket.object_count;
+        total_storage += bucket.storage_bytes;
+    }
+
+    println!("{}", table);
+    println!("\nTotal: {} objects, {}", total_objects, format_bytes(total_storage));
+}
+
+pub fn print_r2_notifications(notifications: &[R2EventNotification]) {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec![
+            Cell::new("Queue ID")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Events")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Prefix")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+        ]);
+
+    for notification in notifications {
+        table.add_row(vec![
+            Cell::new(&notification.queue_id),
+            Cell::new(notification.events.join(", ")),
+            Cell::new(notification.prefix.as_deref().unwrap_or("-")),
+        ]);
+    }
+
+    println!("{}", table);
+    println!("\nTotal: {} rules", notifications.len());
+}
+
+pub fn print_r2_migration_jobs(jobs: &[R2MigrationJob]) {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec![
+            Cell::new("ID")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Status")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Source")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Target")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+        ]);
+
+    for job in jobs {
+        let status_cell = Cell::new(&job.status);
+        let status_cell = match job.status.as_str() {
+            "completed" => status_cell.fg(Color::Green),
+            "running" => status_cell.fg(Color::Blue),
+            "failed" => status_cell.fg(Color::Red),
+            _ => status_cell.fg(Color::Yellow),
+        };
+
+        table.add_row(vec![
+            Cell::new(&job.id[..8.min(job.id.len())]),
+            status_cell,
+            Cell::new(format!("{} ({})", job.source_bucket, job.source_provider)),
+            Cell::new(&job.target_bucket),
+        ]);
+    }
+
+    println!("{}", table);
+    println!("\nTotal: {} jobs", jobs.len());
+}
+
+fn format_bytes(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = KB * 1024;
+    const GB: u64 = MB * 1024;
+    const TB: u64 = GB * 1024;
+
+    if bytes >= TB {
+        format!("{:.2} TB", bytes as f64 / TB as f64)
+    } else if bytes >= GB {
+        format!("{:.2} GB", bytes as f64 / GB as f64)
+    } else if bytes >= MB {
+        format!("{:.2} MB", bytes as f64 / MB as f64)
+    } else if bytes >= KB {
+        format!("{:.2} KB", bytes as f64 / KB as f64)
+    } else {
+        format!("{} B", bytes)
+    }
 }
 
 #[cfg(test)]

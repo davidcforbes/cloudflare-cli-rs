@@ -22,6 +22,7 @@ async fn test_client_get_success() {
         api_token: Some("test_token".to_string()),
         api_key: None,
         api_email: None,
+        account_id: None,
         default_zone: None,
         output_format: None,
     };

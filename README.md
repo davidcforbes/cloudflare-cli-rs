@@ -1,6 +1,6 @@
 # CFAD - CloudFlare Admin CLI
 
-A fast, type-safe Rust CLI for managing Cloudflare DNS, zones, and cache from the command line.
+A fast, type-safe Rust CLI for managing Cloudflare DNS, zones, cache, D1 databases, and R2 storage from the command line.
 
 [![CI](https://github.com/davidcforbes/cloudflare-cli-rs/workflows/CI/badge.svg)](https://github.com/davidcforbes/cloudflare-cli-rs/actions/workflows/ci.yml)
 [![Release](https://github.com/davidcforbes/cloudflare-cli-rs/workflows/Release/badge.svg)](https://github.com/davidcforbes/cloudflare-cli-rs/actions/workflows/release.yml)
@@ -16,7 +16,7 @@ A fast, type-safe Rust CLI for managing Cloudflare DNS, zones, and cache from th
 [![Cloudflare API](https://img.shields.io/badge/Cloudflare%20API-v4-orange?logo=cloudflare)](https://api.cloudflare.com/)
 [![GitHub Sponsors](https://img.shields.io/github/sponsors/davidcforbes?style=flat&logo=github&label=Sponsor&color=EA4AAA)](https://github.com/sponsors/davidcforbes)
 
-> **Current Status:** v0.2.0 - DNS features complete (show, update, delete, import)
+> **Current Status:** v0.3.0 - D1 Database and R2 Storage support complete
 
 ---
 
@@ -97,10 +97,11 @@ The CLI complements Cloudflare's Workers and R2 services by providing **programm
 | **Zone Management** | ✅ Complete | list, show, create, delete, settings, update |
 | **Cache Management** | ✅ Complete | purge (all, files, tags, hosts, prefixes) |
 | **Config Management** | ✅ Complete | init, show, profiles |
+| **D1 Databases** | ✅ Complete | list, show, create, update, delete, query, export, import, bookmark, restore |
+| **R2 Storage** | ✅ Complete | buckets, cors, domains, lifecycle, locks, metrics, sippy, notifications, migrate, temp-creds |
 | **Firewall Rules** | 🔮 Planned | Firewall rule CRUD, IP access rules |
 | **Analytics** | 🔮 Planned | Dashboard queries, metrics export |
 | **Workers** | 🔮 Planned | Worker deployment and management |
-| **R2 Integration** | 🔮 Planned | Integrate cfr2 functionality |
 
 ---
 
@@ -249,6 +250,10 @@ Required permissions:
 - DNS:Read (for DNS list/show)
 - DNS:Edit (for DNS create/update/delete)
 - Cache Purge (for cache operations)
+- D1:Read (for D1 database list/show/query)
+- D1:Edit (for D1 database create/update/delete/import)
+- R2:Read (for R2 bucket list/show/metrics)
+- R2:Edit (for R2 bucket create/delete, CORS, domains, lifecycle, etc.)
 
 ### Legacy API Key + Email
 
@@ -264,6 +269,36 @@ Or in config file:
 api_key = "your_api_key"
 api_email = "your@email.com"
 ```
+
+### Account ID Configuration
+
+For D1 and R2 commands that require an account ID, you can configure it once instead of passing `--account-id` on every command:
+
+**Environment Variable (Recommended):**
+
+```bash
+export CLOUDFLARE_ACCOUNT_ID="your_account_id"
+cfad d1 list   # No --account-id needed
+cfad r2 list   # No --account-id needed
+```
+
+**Configuration File:**
+
+```toml
+[profiles.default]
+api_token = "your_api_token"
+account_id = "your_account_id"
+```
+
+**CLI Override:**
+
+You can still override the account ID on any command:
+
+```bash
+cfad d1 list --account-id different_account_id
+```
+
+**Resolution Order:** CLI flag > Environment variable > Config file
 
 ---
 
@@ -518,6 +553,448 @@ cfad cache purge example.com --prefixes /static/,/images/
 
 ---
 
+### D1 Database Management
+
+D1 is Cloudflare's serverless SQLite database. CFAD provides comprehensive D1 management capabilities.
+
+> **Note:** The `--account-id` flag is optional if you have set `CLOUDFLARE_ACCOUNT_ID` environment variable or `account_id` in your config file. See [Account ID Configuration](#account-id-configuration).
+
+#### List D1 Databases
+
+```bash
+# With environment variable set (recommended)
+cfad d1 list
+
+# Or with explicit account ID
+cfad d1 list --account-id <account-id>
+```
+
+**Output:**
+
+```text
+D1 Databases:
+
+╔═══════════════════╦════════╦══════════╦══════════╗
+║ Name              ║ Tables ║ Size     ║ ID       ║
+╠═══════════════════╬════════╬══════════╬══════════╣
+║ production-db     ║ 12     ║ 4.2 MB   ║ abc12345 ║
+║ staging-db        ║ 8      ║ 1.1 MB   ║ def67890 ║
+╚═══════════════════╩════════╩══════════╩══════════╝
+
+Total: 2 databases
+```
+
+#### Show D1 Database Details
+
+```bash
+cfad d1 show --account-id <account-id> <database-id>
+```
+
+#### Create D1 Database
+
+```bash
+# Create a new database
+cfad d1 create --account-id <account-id> my-database
+
+# With location hint for optimal latency
+cfad d1 create --account-id <account-id> my-database --location wnam
+```
+
+**Available locations:** `wnam` (Western North America), `enam` (Eastern North America), `weur` (Western Europe), `eeur` (Eastern Europe), `apac` (Asia Pacific)
+
+#### Update D1 Database
+
+```bash
+cfad d1 update --account-id <account-id> <database-id> --name new-name
+```
+
+#### Delete D1 Database
+
+```bash
+cfad d1 delete --account-id <account-id> <database-id> --confirm
+```
+
+#### Execute SQL Queries
+
+```bash
+# Execute a SQL query
+cfad d1 query --account-id <account-id> <database-id> "SELECT * FROM users LIMIT 10"
+
+# Use raw format for better performance (array output)
+cfad d1 query --account-id <account-id> <database-id> "SELECT * FROM users" --raw
+```
+
+#### Execute SQL from File
+
+```bash
+cfad d1 query-file --account-id <account-id> <database-id> schema.sql
+cfad d1 query-file --account-id <account-id> <database-id> migrations/001.sql --raw
+```
+
+#### Export D1 Database
+
+```bash
+cfad d1 export --account-id <account-id> <database-id>
+```
+
+**Output:**
+
+```text
+Export initiated:
+  Task ID: task_abc123
+  Status: pending
+  Download URL: https://... (when complete)
+```
+
+#### Import SQL into D1 Database
+
+```bash
+cfad d1 import --account-id <account-id> <database-id> backup.sql
+```
+
+#### Time Travel - Get Bookmark
+
+D1 supports point-in-time recovery via Time Travel.
+
+```bash
+# Get current bookmark
+cfad d1 bookmark --account-id <account-id> <database-id>
+
+# Get bookmark nearest to a timestamp
+cfad d1 bookmark --account-id <account-id> <database-id> --timestamp "2026-02-01T12:00:00Z"
+```
+
+#### Time Travel - Restore Database
+
+```bash
+# Restore to a specific bookmark
+cfad d1 restore --account-id <account-id> <database-id> --bookmark <bookmark-id> --confirm
+
+# Restore to a specific timestamp
+cfad d1 restore --account-id <account-id> <database-id> --timestamp "2026-02-01T12:00:00Z" --confirm
+```
+
+---
+
+### R2 Storage Management
+
+R2 is Cloudflare's S3-compatible object storage with zero egress fees. CFAD provides comprehensive R2 management.
+
+> **Note:** The `--account-id` flag is optional if you have set `CLOUDFLARE_ACCOUNT_ID` environment variable or `account_id` in your config file. See [Account ID Configuration](#account-id-configuration).
+
+#### List R2 Buckets
+
+```bash
+# With environment variable set (recommended)
+cfad r2 list
+
+# Or with explicit account ID
+cfad r2 list --account-id <account-id>
+```
+
+**Output:**
+
+```text
+R2 Buckets:
+
+╔═══════════════════╦══════════╦═════════════════════╗
+║ Name              ║ Location ║ Created             ║
+╠═══════════════════╬══════════╬═════════════════════╣
+║ assets-bucket     ║ wnam     ║ 2026-01-15T10:30:00 ║
+║ backups-bucket    ║ eeur     ║ 2026-01-20T14:22:00 ║
+╚═══════════════════╩══════════╩═════════════════════╝
+
+Total: 2 buckets
+```
+
+#### Show R2 Bucket Details
+
+```bash
+cfad r2 show --account-id <account-id> my-bucket
+```
+
+#### Create R2 Bucket
+
+```bash
+# Create a bucket
+cfad r2 create --account-id <account-id> my-bucket
+
+# With location hint
+cfad r2 create --account-id <account-id> my-bucket --location weur
+
+# With storage class
+cfad r2 create --account-id <account-id> my-bucket --storage-class Standard
+```
+
+#### Delete R2 Bucket
+
+```bash
+cfad r2 delete --account-id <account-id> my-bucket --confirm
+```
+
+---
+
+#### R2 CORS Management
+
+```bash
+# Show CORS configuration
+cfad r2 cors show --account-id <account-id> my-bucket
+
+# Set CORS from JSON file
+cfad r2 cors set --account-id <account-id> my-bucket --file cors.json
+
+# Delete CORS configuration
+cfad r2 cors delete --account-id <account-id> my-bucket --confirm
+```
+
+**CORS JSON format (`cors.json`):**
+
+```json
+[
+  {
+    "allowedOrigins": ["https://example.com"],
+    "allowedMethods": ["GET", "PUT", "POST"],
+    "allowedHeaders": ["Content-Type"],
+    "exposeHeaders": ["ETag"],
+    "maxAgeSeconds": 3600
+  }
+]
+```
+
+---
+
+#### R2 Custom Domain Management
+
+```bash
+# List custom domains
+cfad r2 domain list --account-id <account-id> my-bucket
+
+# Show domain details
+cfad r2 domain show --account-id <account-id> my-bucket cdn.example.com
+
+# Add a custom domain
+cfad r2 domain add --account-id <account-id> my-bucket cdn.example.com
+
+# With zone ID and TLS settings
+cfad r2 domain add --account-id <account-id> my-bucket cdn.example.com \
+  --zone-id <zone-id> --min-tls 1.2
+
+# Update custom domain
+cfad r2 domain update --account-id <account-id> my-bucket cdn.example.com \
+  --enabled true --min-tls 1.3
+
+# Delete custom domain
+cfad r2 domain delete --account-id <account-id> my-bucket cdn.example.com --confirm
+```
+
+---
+
+#### R2 Public Access (r2.dev Domain)
+
+```bash
+# Show public access status
+cfad r2 public-access show --account-id <account-id> my-bucket
+
+# Enable public access via r2.dev
+cfad r2 public-access enable --account-id <account-id> my-bucket
+
+# Disable public access
+cfad r2 public-access disable --account-id <account-id> my-bucket
+```
+
+---
+
+#### R2 Lifecycle Rules
+
+```bash
+# Show lifecycle rules
+cfad r2 lifecycle show --account-id <account-id> my-bucket
+
+# Set lifecycle rules from JSON file
+cfad r2 lifecycle set --account-id <account-id> my-bucket --file lifecycle.json
+```
+
+**Lifecycle JSON format (`lifecycle.json`):**
+
+```json
+{
+  "rules": [
+    {
+      "id": "delete-old-logs",
+      "enabled": true,
+      "conditions": { "prefix": "logs/" },
+      "actions": { "deleteAfterDays": 30 }
+    },
+    {
+      "id": "cleanup-temp",
+      "enabled": true,
+      "conditions": { "prefix": "temp/" },
+      "actions": { "deleteAfterDays": 7 }
+    }
+  ]
+}
+```
+
+---
+
+#### R2 Bucket Locks (Object Lock)
+
+```bash
+# Show lock configuration
+cfad r2 lock show --account-id <account-id> my-bucket
+
+# Enable bucket lock (governance mode)
+cfad r2 lock enable --account-id <account-id> my-bucket --mode governance --days 90
+
+# Enable bucket lock (compliance mode - cannot be deleted)
+cfad r2 lock enable --account-id <account-id> my-bucket --mode compliance --days 365
+
+# Disable bucket lock
+cfad r2 lock disable --account-id <account-id> my-bucket --confirm
+```
+
+---
+
+#### R2 Storage Metrics
+
+```bash
+cfad r2 metrics --account-id <account-id>
+```
+
+**Output:**
+
+```text
+R2 Metrics:
+
+╔═══════════════════╦════════════╦═══════════╗
+║ Bucket            ║ Objects    ║ Storage   ║
+╠═══════════════════╬════════════╬═══════════╣
+║ assets-bucket     ║ 15,234     ║ 2.3 GB    ║
+║ backups-bucket    ║ 892        ║ 45.6 GB   ║
+╚═══════════════════╩════════════╩═══════════╝
+
+Total: 16,126 objects, 47.9 GB
+```
+
+---
+
+#### R2 Sippy (Incremental Migration)
+
+Sippy enables incremental migration from other S3-compatible providers.
+
+```bash
+# Show Sippy configuration
+cfad r2 sippy show --account-id <account-id> my-bucket
+
+# Enable Sippy from AWS S3
+cfad r2 sippy enable --account-id <account-id> my-bucket \
+  --provider aws \
+  --source-bucket source-bucket-name \
+  --region us-east-1 \
+  --access-key-id <key> \
+  --secret-access-key <secret>
+
+# Enable Sippy from GCS
+cfad r2 sippy enable --account-id <account-id> my-bucket \
+  --provider gcs \
+  --source-bucket source-bucket-name
+
+# Disable Sippy
+cfad r2 sippy disable --account-id <account-id> my-bucket --confirm
+```
+
+---
+
+#### R2 Event Notifications
+
+```bash
+# List notification rules
+cfad r2 notifications list --account-id <account-id> my-bucket
+
+# Show notification rule details
+cfad r2 notifications show --account-id <account-id> my-bucket <queue-id>
+
+# Create notification rule
+cfad r2 notifications create --account-id <account-id> my-bucket <queue-id> \
+  --events object:create,object:delete \
+  --prefix uploads/ \
+  --suffix .jpg
+
+# Delete notification rule
+cfad r2 notifications delete --account-id <account-id> my-bucket <queue-id> --confirm
+```
+
+---
+
+#### R2 Super Slurper (Bulk Migration)
+
+Super Slurper performs bulk data migration from other cloud providers.
+
+```bash
+# List migration jobs
+cfad r2 migrate list --account-id <account-id>
+
+# Show job details
+cfad r2 migrate show --account-id <account-id> <job-id>
+
+# Create migration job
+cfad r2 migrate create --account-id <account-id> \
+  --source-provider aws \
+  --source-bucket source-bucket \
+  --source-region us-east-1 \
+  --target-bucket my-r2-bucket \
+  --access-key-id <key> \
+  --secret-access-key <secret>
+
+# Pause migration
+cfad r2 migrate pause --account-id <account-id> <job-id>
+
+# Resume migration
+cfad r2 migrate resume --account-id <account-id> <job-id>
+
+# Abort migration
+cfad r2 migrate abort --account-id <account-id> <job-id> --confirm
+
+# Check progress
+cfad r2 migrate progress --account-id <account-id> <job-id>
+
+# View logs
+cfad r2 migrate logs --account-id <account-id> <job-id>
+```
+
+---
+
+#### R2 Temporary Credentials
+
+Generate scoped temporary credentials for S3-compatible access.
+
+```bash
+# Create read-only credentials for a bucket
+cfad r2 temp-creds create --account-id <account-id> \
+  --bucket my-bucket \
+  --permission read \
+  --ttl 3600
+
+# Create read-write credentials scoped to a prefix
+cfad r2 temp-creds create --account-id <account-id> \
+  --bucket my-bucket \
+  --prefix uploads/ \
+  --permission readwrite \
+  --ttl 7200
+```
+
+**Output:**
+
+```text
+Temporary Credentials:
+  Access Key ID: AKIAIOSFODNN7EXAMPLE
+  Secret Access Key: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+  Session Token: FwoGZXIvYXdzEBYaDK...
+  Expiration: 2026-02-04T15:00:00Z
+```
+
+---
+
 ### Configuration Management
 
 #### Initialize Config
@@ -654,29 +1131,29 @@ default_zone = "staging-example.com"
 
 ### System Overview
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         CFAD CLI (v0.2.0)                       │
-│                                                                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
-│  │   Config     │  │  Command     │  │   Output     │           │
-│  │   Manager    │  │   Parser     │  │  Formatter   │           │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘           │
-│         │                 │                  │                  │
-│         └─────────┬───────┴──────────────────┘                  │
-│                   │                                             │
-│         ┌─────────▼──────────────────────┐                      │
-│         │   CloudflareClient             │                      │
-│         │  (Async HTTP + Rate Limiting)  │                      │
-│         └─────────┬──────────────────────┘                      │
-│                   │                                             │
-│    ┌──────────────┼──────────────┬──────────────┐               │
-│    │              │              │              │               │
-│  ┌─▼───────┐  ┌──▼─────┐  ┌────▼────┐  ┌──────▼──────┐          │
-│  │  DNS    │  │  Zone  │  │  Cache  │  │   Config    │          │
-│  │ Module  │  │ Module │  │ Module  │  │   Module    │          │
-│  └─────────┘  └────────┘  └─────────┘  └─────────────┘          │
-└─────────────────────────────────────────────────────────────────┘
+```text
+┌──────────────────────────────────────────────────────────────────────────┐
+│                            CFAD CLI (v0.3.0)                             │
+│                                                                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                    │
+│  │   Config     │  │  Command     │  │   Output     │                    │
+│  │   Manager    │  │   Parser     │  │  Formatter   │                    │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘                    │
+│         │                 │                  │                           │
+│         └─────────┬───────┴──────────────────┘                           │
+│                   │                                                      │
+│         ┌─────────▼──────────────────────┐                               │
+│         │   CloudflareClient             │                               │
+│         │  (Async HTTP + Rate Limiting)  │                               │
+│         └─────────┬──────────────────────┘                               │
+│                   │                                                      │
+│    ┌──────┬───────┼───────┬──────────┬──────────┐                        │
+│    │      │       │       │          │          │                        │
+│  ┌─▼────┐ ▼─────┐ ▼─────┐ ▼────────┐ ▼────────┐ ▼──────────┐             │
+│  │ DNS  │ │Zone │ │Cache│ │   D1   │ │   R2   │ │  Config  │             │
+│  │Module│ │Mod. │ │Mod. │ │ Module │ │ Module │ │  Module  │             │
+│  └──────┘ └─────┘ └─────┘ └────────┘ └────────┘ └──────────┘             │
+└──────────────────────────────────────────────────────────────────────────┘
                             │
                             ▼
               ┌─────────────────────────────┐
@@ -687,7 +1164,7 @@ default_zone = "staging-example.com"
 
 ### Project Structure
 
-```
+```text
 cfad/
 ├── src/
 │   ├── main.rs                   # Entry point, command routing
@@ -696,7 +1173,9 @@ cfad/
 │   │   ├── config.rs             # Config commands
 │   │   ├── dns.rs                # DNS commands
 │   │   ├── zone.rs               # Zone commands
-│   │   └── cache.rs              # Cache commands
+│   │   ├── cache.rs              # Cache commands
+│   │   ├── d1.rs                 # D1 database commands
+│   │   └── r2.rs                 # R2 storage commands
 │   ├── client/                   # HTTP client
 │   │   ├── mod.rs                # CloudflareClient
 │   │   └── retry.rs              # Retry logic
@@ -710,13 +1189,17 @@ cfad/
 │   │   ├── dns.rs                # DNS models
 │   │   ├── zone.rs               # Zone models
 │   │   ├── cache.rs              # Cache models
+│   │   ├── d1.rs                 # D1 database models
+│   │   ├── r2.rs                 # R2 storage models
 │   │   └── response.rs           # Response wrappers
 │   ├── ops/                      # Operations
 │   │   ├── dns.rs                # DNS operations
 │   │   ├── zone.rs               # Zone operations
-│   │   └── cache.rs              # Cache operations
+│   │   ├── cache.rs              # Cache operations
+│   │   ├── d1.rs                 # D1 database operations
+│   │   └── r2.rs                 # R2 storage operations
 │   ├── output/                   # Output formatting
-│   │   └── table.rs              # Table formatter
+│   │   └── table.rs              # Table formatter (DNS, Zone, D1, R2)
 │   ├── utils/                    # Utilities
 │   │   └── validation.rs         # Input validators
 │   └── metrics/                  # Metrics (stub)
@@ -876,9 +1359,9 @@ cargo fmt
 - ✅ **Compilation Errors:** 0
 - ✅ **Compilation Warnings:** 0
 - ✅ **Clippy Warnings:** 0
-- ✅ **Tests:** 68 (54 unit + 14 integration)
-- ✅ **Binary Size:** 5.3 MB (release)
-- ✅ **Build Time:** ~55s (release)
+- ✅ **Tests:** 126 (unit + integration)
+- ✅ **Binary Size:** ~6 MB (release)
+- ✅ **Build Time:** ~2 min (release)
 
 ### Code Quality Checks
 
@@ -937,28 +1420,34 @@ The `/quality` Claude Skill runs comprehensive checks:
 
 ## Roadmap
 
-### v0.2.0 - Bulk Operations (Planned)
+### v0.2.0 - Bulk Operations ✅ Complete
 
 - DNS import from BIND zone files
 - DNS import from CSV files
 - Bulk DNS record updates
 - Zone migration tools
 
-### v0.3.0 - Security Features (Planned)
+### v0.3.0 - D1 & R2 Support ✅ Complete
+
+- D1 Database Management (CRUD, query, export, import, time travel)
+- R2 Storage Management (buckets, CORS, domains, lifecycle, locks)
+- R2 Advanced Features (metrics, Sippy, notifications, migrations, temp creds)
+
+### v0.4.0 - Security Features (Planned)
 
 - Firewall rule management
 - IP access rules (whitelist/block/challenge)
 - Country-based blocking
 - WAF custom rules
 
-### v0.4.0 - Analytics & Reporting (Planned)
+### v0.5.0 - Analytics & Reporting (Planned)
 
 - Dashboard analytics queries
 - Request/bandwidth/threat metrics
 - Time-range filtering
 - CSV/JSON report export
 
-### v0.5.0 - Workers & Edge (Planned)
+### v0.6.0 - Workers & Edge (Planned)
 
 - Worker script deployment
 - Worker log tailing
@@ -967,7 +1456,6 @@ The `/quality` Claude Skill runs comprehensive checks:
 
 ### v1.0.0 - Full Integration (Planned)
 
-- R2 bucket management (integrate cfr2)
 - Pages deployment
 - Stream video management
 - Shell completions (bash/zsh/fish)
@@ -1100,6 +1588,45 @@ These commands remain unchanged:
 ---
 
 ## Changelog
+
+### v0.3.0 (2026-02-04)
+
+**D1 Database Support:**
+
+- ✅ D1 database CRUD operations (list, show, create, update, delete)
+- ✅ SQL query execution (query, query-file, raw mode)
+- ✅ Database export to SQL
+- ✅ Database import from SQL files
+- ✅ Time Travel support (bookmark, restore)
+
+**R2 Storage Support:**
+
+- ✅ R2 bucket management (list, show, create, delete)
+- ✅ CORS configuration (show, set, delete)
+- ✅ Custom domain management (list, show, add, update, delete)
+- ✅ Public access via r2.dev (show, enable, disable)
+- ✅ Lifecycle rules (show, set)
+- ✅ Bucket locks / Object Lock (show, enable, disable)
+- ✅ Storage metrics across all buckets
+- ✅ Sippy incremental migration (show, enable, disable)
+- ✅ Event notifications (list, show, create, delete)
+- ✅ Super Slurper bulk migration (list, show, create, pause, resume, abort, progress, logs)
+- ✅ Temporary credentials generation
+
+**Technical:**
+
+- Added `src/api/d1.rs` - D1 API models
+- Added `src/api/r2.rs` - R2 API models
+- Added `src/ops/d1.rs` - D1 operations
+- Added `src/ops/r2.rs` - R2 operations (40+ functions)
+- Added `src/cli/d1.rs` - D1 CLI commands
+- Added `src/cli/r2.rs` - R2 CLI commands with subcommands
+- Updated `src/output/table.rs` - D1/R2 table formatters
+- Zero compilation errors/warnings
+- Zero clippy warnings
+- All 126 tests passing
+
+---
 
 ### v0.2.0 (2026-02-02)
 

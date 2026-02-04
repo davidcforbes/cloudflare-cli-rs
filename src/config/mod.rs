@@ -25,6 +25,9 @@ pub struct Profile {
     pub api_email: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub account_id: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub default_zone: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -36,6 +39,7 @@ impl Profile {
         let api_token = std::env::var("CLOUDFLARE_API_TOKEN").ok();
         let api_key = std::env::var("CLOUDFLARE_API_KEY").ok();
         let api_email = std::env::var("CLOUDFLARE_API_EMAIL").ok();
+        let account_id = std::env::var("CLOUDFLARE_ACCOUNT_ID").ok();
 
         if api_token.is_none() && (api_key.is_none() || api_email.is_none()) {
             return Err(CfadError::config(
@@ -47,6 +51,7 @@ impl Profile {
             api_token,
             api_key,
             api_email,
+            account_id,
             default_zone: None,
             output_format: None,
         })
@@ -78,6 +83,7 @@ impl Profile {
                 .as_ref()
                 .map(|k| format!("{}****", &k[..4.min(k.len())])),
             api_email: self.api_email.clone(),
+            account_id: self.account_id.clone(),
             default_zone: self.default_zone.clone(),
             output_format: self.output_format.clone(),
         }
@@ -88,6 +94,40 @@ impl Profile {
 pub enum AuthMethod {
     ApiToken(String),
     ApiKeyEmail { key: String, email: String },
+}
+
+/// Resolves account_id from CLI argument, environment variable, or config (in that order)
+pub fn resolve_account_id(
+    cli_account_id: Option<String>,
+    profile: Option<&Profile>,
+) -> Result<String> {
+    // 1. CLI argument takes precedence
+    if let Some(id) = cli_account_id {
+        return Ok(id);
+    }
+
+    // 2. Try environment variable
+    if let Ok(id) = std::env::var("CLOUDFLARE_ACCOUNT_ID") {
+        return Ok(id);
+    }
+
+    // 3. Try config profile
+    if let Some(profile) = profile {
+        if let Some(id) = &profile.account_id {
+            return Ok(id.clone());
+        }
+    }
+
+    // 4. Try loading profile from config
+    if let Ok(profile) = Config::load(None) {
+        if let Some(id) = &profile.account_id {
+            return Ok(id.clone());
+        }
+    }
+
+    Err(CfadError::config(
+        "No account ID found. Set CLOUDFLARE_ACCOUNT_ID environment variable, add account_id to config profile, or use --account-id flag",
+    ))
 }
 
 impl Config {
@@ -157,6 +197,7 @@ mod tests {
             api_token: Some("test_token_12345".to_string()),
             api_key: None,
             api_email: None,
+            account_id: None,
             default_zone: None,
             output_format: None,
         };
@@ -176,6 +217,7 @@ mod tests {
             api_token: None,
             api_key: Some("test_key_12345".to_string()),
             api_email: Some("user@example.com".to_string()),
+            account_id: None,
             default_zone: None,
             output_format: None,
         };
@@ -197,6 +239,7 @@ mod tests {
             api_token: Some("test_token".to_string()),
             api_key: Some("test_key".to_string()),
             api_email: Some("user@example.com".to_string()),
+            account_id: None,
             default_zone: None,
             output_format: None,
         };
@@ -214,6 +257,7 @@ mod tests {
             api_token: None,
             api_key: None,
             api_email: None,
+            account_id: None,
             default_zone: None,
             output_format: None,
         };
@@ -228,6 +272,7 @@ mod tests {
             api_token: None,
             api_key: Some("test_key".to_string()),
             api_email: None,
+            account_id: None,
             default_zone: None,
             output_format: None,
         };
@@ -242,6 +287,7 @@ mod tests {
             api_token: None,
             api_key: None,
             api_email: Some("user@example.com".to_string()),
+            account_id: None,
             default_zone: None,
             output_format: None,
         };
@@ -256,6 +302,7 @@ mod tests {
             api_token: Some("secret_token_12345".to_string()),
             api_key: None,
             api_email: None,
+            account_id: None,
             default_zone: Some("example.com".to_string()),
             output_format: None,
         };
@@ -271,6 +318,7 @@ mod tests {
             api_token: None,
             api_key: Some("secret_key_12345".to_string()),
             api_email: Some("user@example.com".to_string()),
+            account_id: None,
             default_zone: None,
             output_format: None,
         };
@@ -287,6 +335,7 @@ mod tests {
             api_token: Some("abc".to_string()),
             api_key: None,
             api_email: None,
+            account_id: None,
             default_zone: None,
             output_format: None,
         };
@@ -365,6 +414,7 @@ mod tests {
             api_token: Some("token123".to_string()),
             api_key: None,
             api_email: None,
+            account_id: None,
             default_zone: Some("example.com".to_string()),
             output_format: Some("json".to_string()),
         };
@@ -412,6 +462,7 @@ mod tests {
             api_token: Some("token".to_string()),
             api_key: Some("key".to_string()),
             api_email: Some("email@test.com".to_string()),
+            account_id: Some("test-account-id".to_string()),
             default_zone: Some("zone.com".to_string()),
             output_format: Some("table".to_string()),
         };
@@ -440,6 +491,7 @@ mod tests {
             api_token: Some("test_token_123".to_string()),
             api_key: None,
             api_email: None,
+            account_id: None,
             default_zone: Some("test.example.com".to_string()),
             output_format: Some("json".to_string()),
         };
@@ -492,6 +544,7 @@ mod tests {
             api_token: Some("prod_token".to_string()),
             api_key: None,
             api_email: None,
+            account_id: None,
             default_zone: Some("prod.example.com".to_string()),
             output_format: None,
         };
@@ -500,6 +553,7 @@ mod tests {
             api_token: Some("dev_token".to_string()),
             api_key: None,
             api_email: None,
+            account_id: None,
             default_zone: Some("dev.example.com".to_string()),
             output_format: Some("json".to_string()),
         };
@@ -569,6 +623,7 @@ default_zone = "example.com"
             api_token: Some("token".to_string()),
             api_key: None,
             api_email: None,
+            account_id: None,
             default_zone: None,
             output_format: None,
         };
@@ -593,6 +648,7 @@ default_zone = "example.com"
             api_token: Some("roundtrip_token".to_string()),
             api_key: None,
             api_email: None,
+            account_id: None,
             default_zone: Some("roundtrip.example.com".to_string()),
             output_format: Some("json".to_string()),
         };
@@ -691,6 +747,7 @@ default_zone = "example.com"
             api_token: Some("token".to_string()),
             api_key: Some("key".to_string()),
             api_email: Some("email@test.com".to_string()),
+            account_id: Some("account123".to_string()),
             default_zone: Some("zone.com".to_string()),
             output_format: Some("json".to_string()),
         };

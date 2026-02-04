@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-02-04
+
+### Added in 0.3.0
+
+- **D1 Database Support** - Full management of Cloudflare D1 serverless SQLite databases
+  - `cfad d1 list` - List all D1 databases
+  - `cfad d1 show` - Show database details (tables, size, version)
+  - `cfad d1 create` - Create new database with optional location hint
+  - `cfad d1 update` - Update database name
+  - `cfad d1 delete` - Delete database with confirmation
+  - `cfad d1 query` - Execute SQL queries with object or raw array output
+  - `cfad d1 query-file` - Execute SQL from file
+  - `cfad d1 export` - Export database to SQL
+  - `cfad d1 import` - Import SQL into database
+  - `cfad d1 bookmark` - Get Time Travel bookmark
+  - `cfad d1 restore` - Restore database to point in time
+
+- **R2 Storage Support** - Full management of Cloudflare R2 object storage
+  - `cfad r2 list` - List all buckets
+  - `cfad r2 show` - Show bucket details
+  - `cfad r2 create` - Create bucket with location hint and storage class
+  - `cfad r2 delete` - Delete bucket with confirmation
+  - `cfad r2 cors` - CORS configuration management (show, set, delete)
+  - `cfad r2 domain` - Custom domain management (list, show, add, update, delete)
+  - `cfad r2 public-access` - Managed r2.dev domain (show, enable, disable)
+  - `cfad r2 lifecycle` - Lifecycle rules (show, set)
+  - `cfad r2 lock` - Bucket lock / Object Lock (show, enable, disable)
+  - `cfad r2 metrics` - Storage metrics across all buckets
+  - `cfad r2 sippy` - Incremental migration from S3/GCS (show, enable, disable)
+  - `cfad r2 notifications` - Event notifications (list, show, create, delete)
+  - `cfad r2 migrate` - Super Slurper bulk migration (list, show, create, pause, resume, abort, progress, logs)
+  - `cfad r2 temp-creds` - Generate scoped temporary credentials
+
+- New API models: `src/api/d1.rs`, `src/api/r2.rs`
+- New operations: `src/ops/d1.rs`, `src/ops/r2.rs` (40+ functions)
+- New CLI commands: `src/cli/d1.rs`, `src/cli/r2.rs`
+- New table formatters for D1 databases, R2 buckets, metrics, domains, notifications, migration jobs
+
+### Changed in 0.3.0
+
+- **Account ID Configuration** - `--account-id` flag is now optional for D1 and R2 commands
+  - Supports `CLOUDFLARE_ACCOUNT_ID` environment variable
+  - Supports `account_id` field in config profile
+  - Resolution order: CLI flag > Environment variable > Config file
+- Updated CLI to include D1 and R2 subcommands
+- Extended output/table.rs with D1 and R2 formatters
+- Expanded main.rs with 11 new command handlers
+
+### Technical in 0.3.0
+
+- Zero compilation errors/warnings
+- Zero clippy warnings
+- All 126 tests passing
+- Full Cloudflare API v4 coverage for D1 and R2
+
+---
+
 ### Added in Unreleased (2026-02-03)
 - **CodeCov Integration** - Automated test coverage reporting
   - Configured codecov-action@v5 with token authentication

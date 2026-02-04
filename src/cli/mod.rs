@@ -2,7 +2,9 @@ use clap::{Parser, Subcommand};
 
 pub mod cache;
 pub mod config;
+pub mod d1;
 pub mod dns;
+pub mod r2;
 pub mod zone;
 
 #[derive(Parser)]
@@ -57,6 +59,14 @@ pub enum Commands {
     /// Cache management
     #[command(subcommand)]
     Cache(cache::CacheCommand),
+
+    /// D1 database management
+    #[command(subcommand)]
+    D1(d1::D1Command),
+
+    /// R2 object storage management
+    #[command(subcommand)]
+    R2(r2::R2Command),
 
     /// Configuration management
     #[command(subcommand)]
