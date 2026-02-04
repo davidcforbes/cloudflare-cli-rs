@@ -9,12 +9,21 @@ pub struct Zone {
     pub development_mode: u32,
     #[serde(default)]
     pub name_servers: Vec<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_default")]
     pub original_name_servers: Vec<String>,
     pub owner: Owner,
     pub account: Account,
     pub created_on: String,
     pub modified_on: String,
+}
+
+/// Deserialize null as default value (empty vec, etc.)
+fn deserialize_null_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Default + Deserialize<'de>,
+{
+    Ok(Option::deserialize(deserializer)?.unwrap_or_default())
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
