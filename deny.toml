@@ -5,10 +5,14 @@
 # The advisories section is for checking security vulnerabilities
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
+# Deny crates with security vulnerabilities
 vulnerability = "deny"
-unmaintained = "warn"
+# Warn about unmaintained crates (none = don't check, workspace = only direct deps)
+unmaintained = "workspace"
+# Deny yanked (withdrawn) crates
 yanked = "deny"
-notice = "warn"
+# Warn about security notices
+notice = "workspace"
 ignore = [
     # Add advisory IDs to ignore here
     # "RUSTSEC-0000-0000",
