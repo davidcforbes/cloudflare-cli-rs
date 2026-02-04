@@ -19,6 +19,79 @@ A fast, type-safe Rust CLI for managing Cloudflare DNS, zones, and cache from th
 
 ---
 
+## About Cloudflare
+
+Global Edge Platform
+Cloudflare operates a global edge network spanning 300+ cities worldwide, providing enterprise-grade infrastructure for businesses of all sizes. The platform serves as a reverse proxy, CDN, and distributed computing environment that sits between your users and your infrastructure.
+​
+## Key Platform Services
+
+Cloudflare Workers (Serverless Compute)
+
+Deploy JavaScript/TypeScript, Rust (WASM), Python, and other languages to the edge
+
+Sub-millisecond startup times with V8 isolates (not containers)
+
+Execute code in 300+ locations worldwide, closest to your users
+
+Pay-per-request pricing with a generous free tier
+
+Durable Objects for stateful applications and distributed coordination
+
+R2 Storage (Object Storage)
+
+S3-compatible object storage without egress fees
+
+Global availability with automatic replication
+
+Lower costs than AWS S3, Azure Blob, or Google Cloud Storage
+
+Perfect for static assets, backups, data lakes, and CDN origins
+
+Seamless integration with Workers for edge processing
+
+D1 Databases (Serverless SQL)
+
+SQLite-based distributed SQL databases at the edge
+
+Automatic replication across multiple regions
+
+Low-latency reads from the nearest location
+
+ACID compliance with global consistency
+
+Integrated with Workers for edge-native applications
+
+Additional Services
+
+KV (Key-Value): Eventually-consistent edge storage for configuration and session data
+
+Queues: Message queuing for async workflows between Workers
+
+Stream: Live and on-demand video platform with adaptive bitrate streaming
+
+Pages: JAMstack deployment platform with Git integration
+
+DNS: Authoritative DNS with the fastest response times globally
+
+CDN: Content delivery with smart routing and caching
+
+Why a CLI Matters
+While Cloudflare provides an excellent web dashboard and official Wrangler CLI for Workers, cfad (CloudFlare Admin CLI) fills a critical gap for infrastructure automation and DevOps workflows:
+​
+
+Multi-Service Management: Unified interface across DNS, caching, zones, and security settings
+
+CI/CD Integration: Scriptable commands for deployment pipelines
+
+Bulk Operations: Import/export DNS records, batch zone updates, mass cache purges
+
+Performance: Rust-based implementation with async I/O and smart rate limiting
+
+Enterprise Workflows: Profile management for multiple accounts/environments
+
+The CLI complements Cloudflare's Workers and R2 services by providing programmatic control over the infrastructure layer - DNS records, cache policies, firewall rules, and zone configurations - while your application code runs on Workers and stores data in R2/D1.
+
 ## Features
 
 ### ✅ Implemented Features
