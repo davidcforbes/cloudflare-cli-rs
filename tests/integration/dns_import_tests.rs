@@ -22,17 +22,12 @@ fn create_temp_file(content: &str, extension: &str) -> PathBuf {
         .unwrap()
         .as_nanos();
     let file_path = temp_dir.join(format!("test_{}_{}.{}", pid, nanos, extension));
-
-    eprintln!("Creating temp file: {:?}", file_path);
     fs::write(&file_path, content).expect("Failed to write temp file");
-    eprintln!("File exists: {}", file_path.exists());
-
     file_path
 }
 
-fn cleanup_temp_files() {
-    let temp_dir = std::env::temp_dir().join("cfad_dns_import_tests");
-    fs::remove_dir_all(&temp_dir).ok();
+fn cleanup_temp_file(file_path: &PathBuf) {
+    fs::remove_file(file_path).ok();
 }
 
 #[tokio::test]
@@ -75,7 +70,7 @@ async fn test_import_records_csv_success() {
     assert_eq!(stats.success, 2);
     assert_eq!(stats.failed, 0);
 
-    cleanup_temp_files();
+    cleanup_temp_file(&file_path);
 }
 
 #[tokio::test]
@@ -115,7 +110,7 @@ async fn test_import_records_bind_format() {
     let stats = result.unwrap_or_else(|e| panic!("import_records failed: {}", e));
     assert_eq!(stats.total, 1);
 
-    cleanup_temp_files();
+    cleanup_temp_file(&file_path);
 }
 
 #[tokio::test]
@@ -172,7 +167,7 @@ async fn test_import_records_with_failures() {
     assert_eq!(stats.success, 1);
     assert_eq!(stats.failed, 1);
 
-    cleanup_temp_files();
+    cleanup_temp_file(&file_path);
 }
 
 #[tokio::test]
@@ -219,7 +214,7 @@ async fn test_import_records_detect_bind_format() {
     let result = dns::import_records(&client, "zone123", file_path.to_str().unwrap()).await;
 
     assert!(result.is_ok());
-    cleanup_temp_files();
+    cleanup_temp_file(&file_path);
 }
 
 #[tokio::test]
@@ -257,5 +252,5 @@ async fn test_import_records_bind_with_in_class() {
     let result = dns::import_records(&client, "zone123", file_path.to_str().unwrap()).await;
 
     assert!(result.is_ok());
-    cleanup_temp_files();
+    cleanup_temp_file(&file_path);
 }
