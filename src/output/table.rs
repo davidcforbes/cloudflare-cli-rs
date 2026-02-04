@@ -1,6 +1,7 @@
 use crate::api::d1::D1Database;
 use crate::api::dns::DnsRecord;
 use crate::api::r2::{R2Bucket, R2CustomDomain, R2EventNotification, R2Metrics, R2MigrationJob};
+use crate::api::token::{PermissionGroup, Token};
 use crate::api::zone::Zone;
 use comfy_table::{presets::UTF8_FULL, Attribute, Cell, Color, ContentArrangement, Table};
 
@@ -258,7 +259,11 @@ pub fn print_r2_metrics(metrics: &R2Metrics) {
     }
 
     println!("{}", table);
-    println!("\nTotal: {} objects, {}", total_objects, format_bytes(total_storage));
+    println!(
+        "\nTotal: {} objects, {}",
+        total_objects,
+        format_bytes(total_storage)
+    );
 }
 
 pub fn print_r2_notifications(notifications: &[R2EventNotification]) {
@@ -348,6 +353,127 @@ fn format_bytes(bytes: u64) -> String {
     } else {
         format!("{} B", bytes)
     }
+}
+
+pub fn print_tokens(tokens: &[Token]) {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec![
+            Cell::new("Name")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Status")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Last Used")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Expires")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("ID")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+        ]);
+
+    for token in tokens {
+        let status_cell = Cell::new(&token.status);
+        let status_cell = match token.status.as_str() {
+            "active" => status_cell.fg(Color::Green),
+            "disabled" => status_cell.fg(Color::Red),
+            "expired" => status_cell.fg(Color::Yellow),
+            _ => status_cell,
+        };
+
+        table.add_row(vec![
+            Cell::new(&token.name),
+            status_cell,
+            Cell::new(token.last_used_on.as_deref().unwrap_or("-")),
+            Cell::new(token.expires_on.as_deref().unwrap_or("Never")),
+            Cell::new(&token.id[..8.min(token.id.len())]),
+        ]);
+    }
+
+    println!("{}", table);
+    println!("\nTotal: {} tokens", tokens.len());
+}
+
+pub fn print_token(token: &Token) {
+    println!("\nToken Details:\n");
+    println!("  ID: {}", token.id);
+    println!("  Name: {}", token.name);
+    println!("  Status: {}", token.status);
+    if let Some(issued) = &token.issued_on {
+        println!("  Issued: {}", issued);
+    }
+    if let Some(modified) = &token.modified_on {
+        println!("  Modified: {}", modified);
+    }
+    if let Some(not_before) = &token.not_before {
+        println!("  Not Before: {}", not_before);
+    }
+    if let Some(expires) = &token.expires_on {
+        println!("  Expires: {}", expires);
+    }
+    if let Some(last_used) = &token.last_used_on {
+        println!("  Last Used: {}", last_used);
+    }
+    if !token.policies.is_empty() {
+        println!("\n  Policies:");
+        for policy in &token.policies {
+            println!("    - Effect: {}", policy.effect);
+            println!("      Resources: {}", policy.resources);
+            for pg in &policy.permission_groups {
+                println!(
+                    "      Permission: {} ({})",
+                    pg.name.as_deref().unwrap_or("unknown"),
+                    pg.id
+                );
+            }
+        }
+    }
+}
+
+pub fn print_permission_groups(groups: &[PermissionGroup], scope_filter: Option<&str>) {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec![
+            Cell::new("Name")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Scopes")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("ID")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+        ]);
+
+    let filtered_groups: Vec<&PermissionGroup> = groups
+        .iter()
+        .filter(|g| {
+            if let Some(scope) = scope_filter {
+                g.scopes.iter().any(|s| s.contains(scope))
+            } else {
+                true
+            }
+        })
+        .collect();
+
+    for group in &filtered_groups {
+        table.add_row(vec![
+            Cell::new(&group.name),
+            Cell::new(group.scopes.join(", ")),
+            Cell::new(&group.id),
+        ]);
+    }
+
+    println!("{}", table);
+    println!("\nTotal: {} permission groups", filtered_groups.len());
 }
 
 #[cfg(test)]

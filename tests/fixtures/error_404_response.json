@@ -1,0 +1,11 @@
+{
+  "success": false,
+  "errors": [
+    {
+      "code": 7003,
+      "message": "Could not route to /zones/invalid-zone-id, perhaps your object identifier is invalid?"
+    }
+  ],
+  "messages": [],
+  "result": null
+}

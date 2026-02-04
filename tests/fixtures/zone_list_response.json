@@ -1,0 +1,54 @@
+{
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result": [
+    {
+      "id": "023e105f4ecef8ad9ca31a8372d0c353",
+      "name": "example.com",
+      "status": "active",
+      "paused": false,
+      "development_mode": 0,
+      "name_servers": ["ns1.cloudflare.com", "ns2.cloudflare.com"],
+      "original_name_servers": null,
+      "owner": {
+        "id": null,
+        "type": "user",
+        "email": "user@example.com"
+      },
+      "account": {
+        "id": "01a7362d577a6c3019a474fd6f485823",
+        "name": "Demo Account"
+      },
+      "created_on": "2014-01-01T05:20:00.12345Z",
+      "modified_on": "2014-01-01T05:20:00.12345Z"
+    },
+    {
+      "id": "123e105f4ecef8ad9ca31a8372d0c354",
+      "name": "test.com",
+      "status": "pending",
+      "paused": true,
+      "development_mode": 1,
+      "name_servers": [],
+      "original_name_servers": ["ns1.original.com", "ns2.original.com"],
+      "owner": {
+        "id": "owner123abc",
+        "type": "organization",
+        "email": null
+      },
+      "account": {
+        "id": "01a7362d577a6c3019a474fd6f485823",
+        "name": "Demo Account"
+      },
+      "created_on": "2024-06-15T10:30:00.00000Z",
+      "modified_on": "2024-06-15T12:45:00.00000Z"
+    }
+  ],
+  "result_info": {
+    "page": 1,
+    "per_page": 20,
+    "count": 2,
+    "total_count": 2,
+    "total_pages": 1
+  }
+}

@@ -5,6 +5,7 @@ pub mod config;
 pub mod d1;
 pub mod dns;
 pub mod r2;
+pub mod token;
 pub mod zone;
 
 #[derive(Parser)]
@@ -67,6 +68,10 @@ pub enum Commands {
     /// R2 object storage management
     #[command(subcommand)]
     R2(r2::R2Command),
+
+    /// API token management
+    #[command(subcommand)]
+    Token(token::TokenCommand),
 
     /// Configuration management
     #[command(subcommand)]

@@ -44,6 +44,8 @@ url = "2.5"
 # Testing
 wiremock = "0.6"
 serial_test = "3.2"
+assert_cmd = "2.0"
+predicates = "3.1"
 
 [[test]]
 name = "common"

@@ -267,7 +267,9 @@ pub async fn get_lifecycle(
         account_id, bucket_name
     );
     let response: CfResponse<R2LifecycleConfig> = client.get(&endpoint).await?;
-    Ok(response.result.unwrap_or(R2LifecycleConfig { rules: vec![] }))
+    Ok(response
+        .result
+        .unwrap_or(R2LifecycleConfig { rules: vec![] }))
 }
 
 /// Set lifecycle configuration for a bucket
@@ -577,6 +579,9 @@ pub async fn create_temp_credentials(
     let result = response.result.ok_or_else(|| {
         crate::error::CfadError::api("No result returned from create temp credentials")
     })?;
-    println!("✓ Generated temporary credentials (expires: {})", result.expiration);
+    println!(
+        "✓ Generated temporary credentials (expires: {})",
+        result.expiration
+    );
     Ok(result)
 }

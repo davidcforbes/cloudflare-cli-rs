@@ -71,3 +71,127 @@ pub struct MinifySettings {
     pub html: bool,
     pub js: bool,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_zone_deserialize_with_null_owner_id() {
+        let json = r#"{
+            "id": "023e105f4ecef8ad9ca31a8372d0c353",
+            "name": "example.com",
+            "status": "active",
+            "paused": false,
+            "development_mode": 0,
+            "name_servers": ["ns1.cloudflare.com"],
+            "original_name_servers": null,
+            "owner": {
+                "id": null,
+                "type": "user",
+                "email": "user@example.com"
+            },
+            "account": {
+                "id": "account123",
+                "name": "Test Account"
+            },
+            "created_on": "2024-01-01T00:00:00Z",
+            "modified_on": "2024-01-01T00:00:00Z"
+        }"#;
+
+        let zone: Zone =
+            serde_json::from_str(json).expect("Failed to deserialize zone with null owner.id");
+        assert_eq!(zone.id, "023e105f4ecef8ad9ca31a8372d0c353");
+        assert_eq!(zone.name, "example.com");
+        assert!(zone.owner.id.is_none());
+        assert!(zone.original_name_servers.is_empty());
+    }
+
+    #[test]
+    fn test_zone_deserialize_with_all_values() {
+        let json = r#"{
+            "id": "zone123",
+            "name": "test.com",
+            "status": "pending",
+            "paused": true,
+            "development_mode": 1,
+            "name_servers": ["ns1.cf.com", "ns2.cf.com"],
+            "original_name_servers": ["ns1.original.com"],
+            "owner": {
+                "id": "owner123",
+                "type": "organization",
+                "email": "admin@org.com"
+            },
+            "account": {
+                "id": "acc123",
+                "name": "Org Account"
+            },
+            "created_on": "2024-01-01T00:00:00Z",
+            "modified_on": "2024-01-02T00:00:00Z"
+        }"#;
+
+        let zone: Zone = serde_json::from_str(json).expect("Failed to deserialize zone");
+        assert_eq!(zone.id, "zone123");
+        assert!(zone.paused);
+        assert_eq!(zone.owner.id, Some("owner123".to_string()));
+        assert_eq!(zone.original_name_servers.len(), 1);
+    }
+
+    #[test]
+    fn test_zone_deserialize_missing_optional_fields() {
+        let json = r#"{
+            "id": "zone123",
+            "name": "test.com",
+            "status": "active",
+            "paused": false,
+            "development_mode": 0,
+            "name_servers": [],
+            "owner": {
+                "type": "user",
+                "email": null
+            },
+            "account": {
+                "id": "acc123",
+                "name": "Account"
+            },
+            "created_on": "2024-01-01T00:00:00Z",
+            "modified_on": "2024-01-01T00:00:00Z"
+        }"#;
+
+        let zone: Zone =
+            serde_json::from_str(json).expect("Failed to deserialize zone with missing fields");
+        assert!(zone.owner.id.is_none());
+        assert!(zone.owner.email.is_none());
+        assert!(zone.original_name_servers.is_empty());
+    }
+
+    #[test]
+    fn test_owner_deserialize_null_email() {
+        let json = r#"{
+            "id": "owner123",
+            "type": "user",
+            "email": null
+        }"#;
+
+        let owner: Owner = serde_json::from_str(json).expect("Failed to deserialize owner");
+        assert_eq!(owner.id, Some("owner123".to_string()));
+        assert!(owner.email.is_none());
+    }
+
+    #[test]
+    fn test_zone_settings_serialize_skips_none() {
+        let settings = ZoneSettings {
+            security_level: Some("high".to_string()),
+            cache_level: None,
+            development_mode: None,
+            ipv6: None,
+            ssl: None,
+            always_use_https: None,
+            minify: None,
+        };
+
+        let json = serde_json::to_string(&settings).expect("Failed to serialize");
+        assert!(json.contains("security_level"));
+        assert!(!json.contains("cache_level"));
+    }
+}

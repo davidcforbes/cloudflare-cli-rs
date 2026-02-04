@@ -1,7 +1,7 @@
 use crate::api::d1::{
-    CreateD1Database, D1Bookmark, D1Database, D1ExportRequest, D1ExportResponse,
-    D1ImportRequest, D1ImportResponse, D1Query, D1QueryResult, D1RawQueryResult,
-    D1RestoreRequest, D1RestoreResponse, UpdateD1Database,
+    CreateD1Database, D1Bookmark, D1Database, D1ExportRequest, D1ExportResponse, D1ImportRequest,
+    D1ImportResponse, D1Query, D1QueryResult, D1RawQueryResult, D1RestoreRequest,
+    D1RestoreResponse, UpdateD1Database,
 };
 use crate::client::{CfResponse, CloudflareClient};
 use crate::error::Result;
@@ -112,7 +112,10 @@ pub async fn export_database(
     account_id: &str,
     database_id: &str,
 ) -> Result<D1ExportResponse> {
-    let endpoint = format!("/accounts/{}/d1/database/{}/export", account_id, database_id);
+    let endpoint = format!(
+        "/accounts/{}/d1/database/{}/export",
+        account_id, database_id
+    );
     let request = D1ExportRequest {
         output_format: "polling".to_string(),
     };
@@ -129,7 +132,10 @@ pub async fn import_database(
     database_id: &str,
     sql: &str,
 ) -> Result<D1ImportResponse> {
-    let endpoint = format!("/accounts/{}/d1/database/{}/import", account_id, database_id);
+    let endpoint = format!(
+        "/accounts/{}/d1/database/{}/import",
+        account_id, database_id
+    );
     let request = D1ImportRequest {
         sql: Some(sql.to_string()),
         url: None,

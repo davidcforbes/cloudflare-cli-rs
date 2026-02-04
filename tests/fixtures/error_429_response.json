@@ -1,0 +1,11 @@
+{
+  "success": false,
+  "errors": [
+    {
+      "code": 10015,
+      "message": "Rate limit reached. Please wait before making another request."
+    }
+  ],
+  "messages": [],
+  "result": null
+}

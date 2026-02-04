@@ -6,4 +6,5 @@ pub mod firewall;
 pub mod pagination;
 pub mod r2;
 pub mod response;
+pub mod token;
 pub mod zone;

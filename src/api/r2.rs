@@ -194,7 +194,10 @@ pub struct UpdateR2LockConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mode: Option<String>,
     /// Default retention period in days
-    #[serde(rename = "defaultRetentionDays", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "defaultRetentionDays",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub default_retention_days: Option<u32>,
 }
 

@@ -55,6 +55,7 @@ async fn run() -> Result<()> {
         Commands::Cache(cmd) => handle_cache_command(&client, cmd).await?,
         Commands::D1(cmd) => handle_d1_command(&client, cmd).await?,
         Commands::R2(cmd) => handle_r2_command(&client, cmd).await?,
+        Commands::Token(cmd) => handle_token_command(&client, cmd).await?,
     }
 
     Ok(())
@@ -1063,7 +1064,8 @@ async fn handle_r2_migrate_command(
             );
             println!("  Errors: {}", progress.errors);
             if progress.objects_total > 0 {
-                let pct = (progress.objects_migrated as f64 / progress.objects_total as f64) * 100.0;
+                let pct =
+                    (progress.objects_migrated as f64 / progress.objects_total as f64) * 100.0;
                 println!("  Progress: {:.1}%", pct);
             }
             Ok(())
@@ -1106,6 +1108,121 @@ async fn handle_r2_temp_creds_command(
             println!("  Secret Access Key: {}", creds.secret_access_key);
             println!("  Session Token: {}", creds.session_token);
             println!("  Expiration: {}", creds.expiration);
+            Ok(())
+        }
+    }
+}
+
+async fn handle_token_command(
+    client: &client::CloudflareClient,
+    cmd: cli::token::TokenCommand,
+) -> Result<()> {
+    use cli::token::TokenCommand;
+
+    match cmd {
+        TokenCommand::List => {
+            let tokens = ops::token::list_tokens(client).await?;
+            println!("\nAPI Tokens:\n");
+            output::table::print_tokens(&tokens);
+            Ok(())
+        }
+        TokenCommand::Show { token_id } => {
+            let token = ops::token::get_token(client, &token_id).await?;
+            output::table::print_token(&token);
+            Ok(())
+        }
+        TokenCommand::Create {
+            name,
+            permissions,
+            resources,
+            expires,
+            not_before,
+        } => {
+            use crate::api::token::{CreatePermissionGroupRef, CreateToken, CreateTokenPolicy};
+
+            let policy = CreateTokenPolicy {
+                effect: "allow".to_string(),
+                resources: serde_json::json!({ &resources: "*" }),
+                permission_groups: permissions
+                    .into_iter()
+                    .map(|id| CreatePermissionGroupRef { id })
+                    .collect(),
+            };
+
+            let create = CreateToken {
+                name,
+                policies: vec![policy],
+                not_before,
+                expires_on: expires,
+                condition: None,
+            };
+
+            let result = ops::token::create_token(client, create).await?;
+            println!("\n✓ Token created successfully!\n");
+            println!("  ID: {}", result.id);
+            println!("  Name: {}", result.name);
+            println!("  Status: {}", result.status);
+            println!("\n  TOKEN VALUE (save this - it won't be shown again):");
+            println!("  {}", result.value);
+            Ok(())
+        }
+        TokenCommand::Update {
+            token_id,
+            name,
+            status,
+            expires,
+        } => {
+            use crate::api::token::UpdateToken;
+
+            let update = UpdateToken {
+                name,
+                status,
+                policies: None,
+                not_before: None,
+                expires_on: expires,
+                condition: None,
+            };
+
+            let token = ops::token::update_token(client, &token_id, update).await?;
+            println!("✓ Token updated: {}", token.name);
+            Ok(())
+        }
+        TokenCommand::Delete { token_id, confirm } => {
+            if !confirm {
+                println!("⚠ Deletion requires --confirm flag");
+                return Err(crate::error::CfadError::validation("Confirmation required"));
+            }
+            ops::token::delete_token(client, &token_id).await
+        }
+        TokenCommand::Verify => {
+            let verification = ops::token::verify_token(client).await?;
+            println!("\nToken Verification:\n");
+            println!("  ID: {}", verification.id);
+            println!("  Status: {}", verification.status);
+            if let Some(not_before) = &verification.not_before {
+                println!("  Not Before: {}", not_before);
+            }
+            if let Some(expires) = &verification.expires_on {
+                println!("  Expires: {}", expires);
+            }
+            Ok(())
+        }
+        TokenCommand::Permissions { scope } => {
+            let groups = ops::token::list_permission_groups(client).await?;
+            println!("\nAvailable Permission Groups:\n");
+            output::table::print_permission_groups(&groups, scope.as_deref());
+            Ok(())
+        }
+        TokenCommand::Roll { token_id, confirm } => {
+            if !confirm {
+                println!("⚠ Rolling a token requires --confirm flag");
+                return Err(crate::error::CfadError::validation("Confirmation required"));
+            }
+            let result = ops::token::roll_token(client, &token_id).await?;
+            println!("\n✓ Token rolled successfully!\n");
+            println!("  ID: {}", result.id);
+            println!("\n  NEW TOKEN VALUE (save this - it won't be shown again):");
+            println!("  {}", result.value);
             Ok(())
         }
     }
