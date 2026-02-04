@@ -392,7 +392,7 @@ pub fn print_tokens(tokens: &[Token]) {
             status_cell,
             Cell::new(token.last_used_on.as_deref().unwrap_or("-")),
             Cell::new(token.expires_on.as_deref().unwrap_or("Never")),
-            Cell::new(&token.id[..8.min(token.id.len())]),
+            Cell::new(&token.id),
         ]);
     }
 
