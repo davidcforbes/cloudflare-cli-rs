@@ -66,8 +66,7 @@ async fn test_import_records_csv_success() {
     let client = create_test_client(&mock_server).await;
     let result = dns::import_records(&client, "zone123", file_path.to_str().unwrap()).await;
 
-    assert!(result.is_ok());
-    let stats = result.unwrap();
+    let stats = result.unwrap_or_else(|e| panic!("import_records failed: {}", e));
     assert_eq!(stats.total, 2);
     assert_eq!(stats.success, 2);
     assert_eq!(stats.failed, 0);
@@ -109,8 +108,7 @@ async fn test_import_records_bind_format() {
     let client = create_test_client(&mock_server).await;
     let result = dns::import_records(&client, "zone123", file_path.to_str().unwrap()).await;
 
-    assert!(result.is_ok());
-    let stats = result.unwrap();
+    let stats = result.unwrap_or_else(|e| panic!("import_records failed: {}", e));
     assert_eq!(stats.total, 1);
 
     cleanup_temp_files();
@@ -165,8 +163,7 @@ async fn test_import_records_with_failures() {
     let client = create_test_client(&mock_server).await;
     let result = dns::import_records(&client, "zone123", file_path.to_str().unwrap()).await;
 
-    assert!(result.is_ok());
-    let stats = result.unwrap();
+    let stats = result.unwrap_or_else(|e| panic!("import_records failed: {}", e));
     assert_eq!(stats.total, 2);
     assert_eq!(stats.success, 1);
     assert_eq!(stats.failed, 1);
