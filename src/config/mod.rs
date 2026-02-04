@@ -36,10 +36,19 @@ pub struct Profile {
 
 impl Profile {
     pub fn from_env() -> Result<Self> {
-        let api_token = std::env::var("CLOUDFLARE_API_TOKEN").ok();
-        let api_key = std::env::var("CLOUDFLARE_API_KEY").ok();
-        let api_email = std::env::var("CLOUDFLARE_API_EMAIL").ok();
-        let account_id = std::env::var("CLOUDFLARE_ACCOUNT_ID").ok();
+        // Filter out empty strings - env vars set to "" should be treated as unset
+        let api_token = std::env::var("CLOUDFLARE_API_TOKEN")
+            .ok()
+            .filter(|s| !s.is_empty());
+        let api_key = std::env::var("CLOUDFLARE_API_KEY")
+            .ok()
+            .filter(|s| !s.is_empty());
+        let api_email = std::env::var("CLOUDFLARE_API_EMAIL")
+            .ok()
+            .filter(|s| !s.is_empty());
+        let account_id = std::env::var("CLOUDFLARE_ACCOUNT_ID")
+            .ok()
+            .filter(|s| !s.is_empty());
 
         if api_token.is_none() && (api_key.is_none() || api_email.is_none()) {
             return Err(CfadError::config(
@@ -58,18 +67,24 @@ impl Profile {
     }
 
     pub fn auth_method(&self) -> Result<AuthMethod> {
+        // Check for non-empty token first
         if let Some(token) = &self.api_token {
-            Ok(AuthMethod::ApiToken(token.clone()))
-        } else if let (Some(key), Some(email)) = (&self.api_key, &self.api_email) {
-            Ok(AuthMethod::ApiKeyEmail {
-                key: key.clone(),
-                email: email.clone(),
-            })
-        } else {
-            Err(CfadError::config(
-                "No valid authentication method configured",
-            ))
+            if !token.is_empty() {
+                return Ok(AuthMethod::ApiToken(token.clone()));
+            }
         }
+        // Fall back to key + email
+        if let (Some(key), Some(email)) = (&self.api_key, &self.api_email) {
+            if !key.is_empty() && !email.is_empty() {
+                return Ok(AuthMethod::ApiKeyEmail {
+                    key: key.clone(),
+                    email: email.clone(),
+                });
+            }
+        }
+        Err(CfadError::config(
+            "No valid authentication method configured",
+        ))
     }
 
     pub fn redacted(&self) -> Self {
