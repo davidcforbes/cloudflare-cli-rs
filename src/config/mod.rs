@@ -303,6 +303,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_profile_from_env_with_token() {
         std::env::set_var("CLOUDFLARE_API_TOKEN", "test_token");
         let profile = Profile::from_env().unwrap();
@@ -311,6 +312,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_profile_from_env_with_key_email() {
         std::env::set_var("CLOUDFLARE_API_KEY", "test_key");
         std::env::set_var("CLOUDFLARE_API_EMAIL", "test@example.com");
@@ -322,6 +324,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_profile_from_env_no_credentials() {
         // Clear all potential env vars
         std::env::remove_var("CLOUDFLARE_API_TOKEN");
@@ -333,6 +336,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_profile_from_env_incomplete_key_email() {
         // Only key, no email
         std::env::set_var("CLOUDFLARE_API_KEY", "test_key");
@@ -453,7 +457,10 @@ mod tests {
         assert_eq!(loaded_config.profiles.len(), 1);
         let loaded_profile = loaded_config.profiles.get("test_profile").unwrap();
         assert_eq!(loaded_profile.api_token, Some("test_token_123".to_string()));
-        assert_eq!(loaded_profile.default_zone, Some("test.example.com".to_string()));
+        assert_eq!(
+            loaded_profile.default_zone,
+            Some("test.example.com".to_string())
+        );
 
         // Cleanup
         fs::remove_dir_all(&temp_dir).ok();
@@ -506,6 +513,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_config_load_with_env_vars() {
         // Set up env vars
         std::env::set_var("CLOUDFLARE_API_TOKEN", "env_test_token_load");
@@ -588,7 +596,9 @@ default_zone = "example.com"
             default_zone: Some("roundtrip.example.com".to_string()),
             output_format: Some("json".to_string()),
         };
-        config.profiles.insert("roundtrip_test".to_string(), profile);
+        config
+            .profiles
+            .insert("roundtrip_test".to_string(), profile);
 
         // Get the config path
         let config_path = Config::config_path();
@@ -610,22 +620,23 @@ default_zone = "example.com"
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_config_load_fallback_to_env() {
         // Clear env initially
         std::env::remove_var("CLOUDFLARE_API_TOKEN");
         std::env::remove_var("CLOUDFLARE_API_KEY");
         std::env::remove_var("CLOUDFLARE_API_EMAIL");
-        
+
         // Config::load will try env vars as fallback when no file exists
         // Set env var
         std::env::set_var("CLOUDFLARE_API_TOKEN", "fallback_token");
-        
+
         // This should succeed via env var fallback
         let result = Config::load(None);
-        
+
         // Cleanup
         std::env::remove_var("CLOUDFLARE_API_TOKEN");
-        
+
         assert!(result.is_ok());
         let profile = result.unwrap();
         assert_eq!(profile.api_token, Some("fallback_token".to_string()));
@@ -647,11 +658,11 @@ default_zone = "example.com"
     fn test_config_toml_serialization_error_handling() {
         // Test TomlSer error path in save()
         let config = Config::new("test".to_string());
-        
+
         // Serialize to test the toml conversion
         let result = toml::to_string_pretty(&config);
         assert!(result.is_ok());
-        
+
         // Test that map_err(CfadError::TomlSer) path exists
         // by verifying serialization works
         let toml_str = result.unwrap();
@@ -659,16 +670,17 @@ default_zone = "example.com"
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_config_load_with_profile_selection() {
         // Set up multiple profile env scenario
         std::env::set_var("CLOUDFLARE_API_TOKEN", "profile_select_token");
-        
+
         // Load with specific profile name (will fall back to env)
         let result = Config::load(Some("custom_profile"));
-        
+
         // Cleanup
         std::env::remove_var("CLOUDFLARE_API_TOKEN");
-        
+
         // Should succeed via env fallback even if profile doesn't exist in file
         assert!(result.is_ok());
     }
@@ -682,7 +694,7 @@ default_zone = "example.com"
             default_zone: Some("zone.com".to_string()),
             output_format: Some("json".to_string()),
         };
-        
+
         let cloned = profile.clone();
         assert_eq!(profile.api_token, cloned.api_token);
         assert_eq!(profile.api_key, cloned.api_key);

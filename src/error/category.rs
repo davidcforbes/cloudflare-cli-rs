@@ -42,7 +42,10 @@ mod tests {
 
     #[test]
     fn test_error_category_as_str_authentication() {
-        assert_eq!(ErrorCategory::Authentication.as_str(), "Authentication Error");
+        assert_eq!(
+            ErrorCategory::Authentication.as_str(),
+            "Authentication Error"
+        );
     }
 
     #[test]

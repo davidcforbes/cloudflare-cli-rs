@@ -124,7 +124,10 @@ async fn test_purge_hosts_success() {
         .await;
 
     let client = create_test_client(&mock_server).await;
-    let hosts = vec!["www.example.com".to_string(), "blog.example.com".to_string()];
+    let hosts = vec![
+        "www.example.com".to_string(),
+        "blog.example.com".to_string(),
+    ];
     let result = cache::purge_hosts(&client, "zone123", hosts).await;
 
     assert!(result.is_ok());

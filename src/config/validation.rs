@@ -133,7 +133,8 @@ mod tests {
     #[test]
     fn test_validate_record_id_valid() {
         assert!(validate_record_id("rec123456789abcdefghijklmnopqrst").is_ok()); // Exactly 32 chars
-        assert!(validate_record_id("12345678901234567890123456789012").is_ok()); // Exactly 32 chars
+        assert!(validate_record_id("12345678901234567890123456789012").is_ok());
+        // Exactly 32 chars
     }
 
     #[test]

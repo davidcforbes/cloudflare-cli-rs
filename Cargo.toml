@@ -43,6 +43,7 @@ url = "2.5"
 [dev-dependencies]
 # Testing
 wiremock = "0.6"
+serial_test = "3.2"
 
 [[test]]
 name = "common"

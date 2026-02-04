@@ -388,8 +388,7 @@ mod tests {
     fn test_error_category_toml_de() {
         // Test TomlDe error category
         let toml_str = "invalid = [toml";
-        let result: std::result::Result<toml::Value, toml::de::Error> =
-            toml::from_str(toml_str);
+        let result: std::result::Result<toml::Value, toml::de::Error> = toml::from_str(toml_str);
         if let Err(e) = result {
             let error = CfadError::from(e);
             assert!(matches!(error.category(), ErrorCategory::Serialization));

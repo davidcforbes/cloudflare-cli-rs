@@ -586,7 +586,7 @@ www     IN  CNAME   example.com.
     #[test]
     fn test_parse_bind_invalid_line_too_short() {
         let bind = "$ORIGIN example.com.
-www IN";  // Only 2 parts, need at least 4
+www IN"; // Only 2 parts, need at least 4
 
         let records = parse_bind_format(bind).unwrap();
         // Should skip invalid line
@@ -596,7 +596,7 @@ www IN";  // Only 2 parts, need at least 4
     #[test]
     fn test_parse_bind_unsupported_record_type() {
         let bind = "$ORIGIN example.com.
-www IN SRV 10 5 5060 sipserver.example.com.";  // SRV not supported in parse_record_content
+www IN SRV 10 5 5060 sipserver.example.com."; // SRV not supported in parse_record_content
 
         let records = parse_bind_format(bind).unwrap();
         // Should skip unsupported record type
@@ -605,7 +605,7 @@ www IN SRV 10 5 5060 sipserver.example.com.";  // SRV not supported in parse_rec
 
     #[test]
     fn test_parse_bind_with_short_line() {
-        let bind = "short";  // Too short to parse
+        let bind = "short"; // Too short to parse
 
         let records = parse_bind_format(bind).unwrap();
         assert_eq!(records.len(), 0);
