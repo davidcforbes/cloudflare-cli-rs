@@ -12,6 +12,7 @@ A fast, type-safe Rust CLI for managing Cloudflare DNS, zones, and cache from th
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)](https://github.com/davidcforbes/cloudflare-cli-rs/releases)
 [![Made with Rust](https://img.shields.io/badge/Made%20with-Rust-orange?logo=rust)](https://www.rust-lang.org)
 [![Cloudflare API](https://img.shields.io/badge/Cloudflare%20API-v4-orange?logo=cloudflare)](https://api.cloudflare.com/)
+[![GitHub Sponsors](https://img.shields.io/github/sponsors/davidcforbes?style=flat&logo=github&label=Sponsor&color=EA4AAA)](https://github.com/sponsors/davidcforbes)
 
 > **Current Status:** v0.2.0 - DNS features complete (show, update, delete, import)
 
@@ -953,6 +954,20 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - **Documentation:** This README
 - **Issues:** GitHub Issues
 - **Cloudflare API Docs:** <https://developers.cloudflare.com/api/>
+
+### 💖 Sponsor This Project
+
+If you find CFAD useful, consider supporting its development:
+
+[![GitHub Sponsors](https://img.shields.io/github/sponsors/davidcforbes?style=for-the-badge&logo=github&label=Sponsor&color=EA4AAA)](https://github.com/sponsors/davidcforbes)
+
+Your sponsorship helps:
+- 🚀 Accelerate new feature development
+- 🐛 Improve bug fixes and maintenance
+- 📚 Enhance documentation and examples
+- 🔧 Add support for more Cloudflare services
+
+[Become a sponsor](https://github.com/sponsors/davidcforbes) to get priority support and influence the roadmap!
 
 ---
 
