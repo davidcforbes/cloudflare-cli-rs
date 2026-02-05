@@ -3,23 +3,36 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DnsRecord {
     pub id: String,
-    pub zone_id: String,
-    pub zone_name: String,
+    #[serde(default)]
+    pub zone_id: Option<String>,
+    #[serde(default)]
+    pub zone_name: Option<String>,
     pub name: String,
     #[serde(rename = "type")]
     pub record_type: String,
     pub content: String,
     pub ttl: u32,
+    #[serde(default)]
+    pub proxiable: bool,
     pub proxied: bool,
+    #[serde(default)]
     pub locked: bool,
-    pub created_on: String,
-    pub modified_on: String,
+    #[serde(default)]
+    pub created_on: Option<String>,
+    #[serde(default)]
+    pub modified_on: Option<String>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub priority: Option<u16>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data: Option<serde_json::Value>,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+
+    #[serde(default)]
+    pub tags: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

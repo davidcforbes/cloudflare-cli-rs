@@ -68,8 +68,12 @@ pub fn print_dns_record(record: &DnsRecord) {
     if let Some(priority) = record.priority {
         println!("  Priority: {}", priority);
     }
-    println!("  Created: {}", record.created_on);
-    println!("  Modified: {}", record.modified_on);
+    if let Some(created) = &record.created_on {
+        println!("  Created: {}", created);
+    }
+    if let Some(modified) = &record.modified_on {
+        println!("  Modified: {}", modified);
+    }
 }
 
 pub fn print_zones(zones: &[Zone]) {
@@ -485,18 +489,21 @@ mod tests {
     fn create_test_record(ttl: u32, proxied: bool, priority: Option<u16>) -> DnsRecord {
         DnsRecord {
             id: "test123abc".to_string(),
-            zone_id: "zone123".to_string(),
-            zone_name: "example.com".to_string(),
+            zone_id: Some("zone123".to_string()),
+            zone_name: Some("example.com".to_string()),
             name: "www.example.com".to_string(),
             record_type: "A".to_string(),
             content: "203.0.113.1".to_string(),
             ttl,
+            proxiable: true,
             proxied,
             priority,
             locked: false,
-            created_on: "2026-01-01T00:00:00Z".to_string(),
-            modified_on: "2026-01-01T00:00:00Z".to_string(),
+            created_on: Some("2026-01-01T00:00:00Z".to_string()),
+            modified_on: Some("2026-01-01T00:00:00Z".to_string()),
             data: None,
+            comment: None,
+            tags: vec![],
         }
     }
 
