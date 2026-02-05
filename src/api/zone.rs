@@ -41,6 +41,21 @@ pub struct Account {
     pub name: String,
 }
 
+/// Individual zone setting returned by the API
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ZoneSetting {
+    /// Setting identifier (e.g., "ssl", "security_level")
+    pub id: String,
+    /// Current value of the setting
+    pub value: serde_json::Value,
+    /// Whether the setting can be modified
+    #[serde(default)]
+    pub editable: bool,
+    /// When the setting was last modified
+    #[serde(default)]
+    pub modified_on: Option<String>,
+}
+
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct ZoneSettings {
     #[serde(skip_serializing_if = "Option::is_none")]

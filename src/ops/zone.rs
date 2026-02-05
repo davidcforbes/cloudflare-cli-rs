@@ -1,4 +1,4 @@
-use crate::api::zone::{Zone, ZoneSettings};
+use crate::api::zone::{Zone, ZoneSetting, ZoneSettings};
 use crate::client::{CfResponse, CloudflareClient};
 use crate::error::Result;
 use serde::Serialize;
@@ -67,6 +67,16 @@ pub async fn delete_zone(client: &CloudflareClient, zone_id: &str) -> Result<()>
 
     println!("✓ Deleted zone");
     Ok(())
+}
+
+/// Get all settings for a zone
+pub async fn get_zone_settings(
+    client: &CloudflareClient,
+    zone_id: &str,
+) -> Result<Vec<ZoneSetting>> {
+    let endpoint = format!("/zones/{}/settings", zone_id);
+    let response: CfResponse<Vec<ZoneSetting>> = client.get(&endpoint).await?;
+    Ok(response.result.unwrap_or_default())
 }
 
 pub async fn update_zone_settings(

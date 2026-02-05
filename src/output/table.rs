@@ -42,7 +42,7 @@ pub fn print_dns_records(records: &[DnsRecord]) {
                 record.ttl.to_string()
             }),
             Cell::new(if record.proxied { "✓" } else { "✗" }),
-            Cell::new(&record.id[..8]),
+            Cell::new(&record.id),
         ]);
     }
 
@@ -104,7 +104,7 @@ pub fn print_zones(zones: &[Zone]) {
         table.add_row(vec![
             Cell::new(&zone.name),
             status_cell,
-            Cell::new(&zone.id[..8]),
+            Cell::new(&zone.id),
         ]);
     }
 
@@ -137,7 +137,7 @@ pub fn print_d1_databases(databases: &[D1Database]) {
             Cell::new(&db.name),
             Cell::new(db.num_tables.to_string()),
             Cell::new(format_bytes(db.file_size)),
-            Cell::new(&db.uuid[..8.min(db.uuid.len())]),
+            Cell::new(&db.uuid),
         ]);
     }
 
@@ -329,7 +329,7 @@ pub fn print_r2_migration_jobs(jobs: &[R2MigrationJob]) {
         };
 
         table.add_row(vec![
-            Cell::new(&job.id[..8.min(job.id.len())]),
+            Cell::new(&job.id),
             status_cell,
             Cell::new(format!("{} ({})", job.source_bucket, job.source_provider)),
             Cell::new(&job.target_bucket),

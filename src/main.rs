@@ -318,8 +318,45 @@ async fn handle_zone_delete(
 
 async fn handle_zone_settings(client: &client::CloudflareClient, zone: &str) -> Result<()> {
     let zone_obj = ops::zone::get_zone(client, zone).await?;
-    println!("Settings for zone: {}", zone_obj.name);
-    println!("  Development mode: {}", zone_obj.development_mode);
+    let settings = ops::zone::get_zone_settings(client, &zone_obj.id).await?;
+
+    println!("Settings for zone: {}\n", zone_obj.name);
+
+    // Display important settings in a logical order
+    let important_settings = [
+        "ssl",
+        "always_use_https",
+        "security_level",
+        "cache_level",
+        "development_mode",
+        "ipv6",
+        "min_tls_version",
+        "automatic_https_rewrites",
+        "browser_check",
+        "email_obfuscation",
+        "hotlink_protection",
+        "rocket_loader",
+        "minify",
+        "brotli",
+        "early_hints",
+        "http3",
+    ];
+
+    for setting_id in &important_settings {
+        if let Some(setting) = settings.iter().find(|s| s.id == *setting_id) {
+            let value_str = match &setting.value {
+                serde_json::Value::String(s) => s.clone(),
+                serde_json::Value::Bool(b) => if *b { "on" } else { "off" }.to_string(),
+                serde_json::Value::Number(n) => n.to_string(),
+                serde_json::Value::Object(obj) => {
+                    serde_json::to_string(obj).unwrap_or_else(|_| "...".to_string())
+                }
+                _ => setting.value.to_string(),
+            };
+            println!("  {}: {}", setting.id, value_str);
+        }
+    }
+
     Ok(())
 }
 
