@@ -614,6 +614,296 @@ pub fn print_permission_groups(groups: &[PermissionGroup], scope_filter: Option<
     println!("\nTotal: {} permission groups", filtered_groups.len());
 }
 
+// ============================================================================
+// Pages Output Functions
+// ============================================================================
+
+use crate::api::pages::{Deployment, PagesDomain, PagesProject};
+
+pub fn print_pages_projects(projects: &[PagesProject]) {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec![
+            Cell::new("Name")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Subdomain")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Branch")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Framework")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Domains")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+        ]);
+
+    for project in projects {
+        table.add_row(vec![
+            Cell::new(&project.name),
+            Cell::new(&project.subdomain),
+            Cell::new(&project.production_branch),
+            Cell::new(project.framework.as_deref().unwrap_or("-")),
+            Cell::new(project.domains.len().to_string()),
+        ]);
+    }
+
+    println!("{}", table);
+    println!("\nTotal: {} projects", projects.len());
+}
+
+pub fn print_pages_project(project: &PagesProject) {
+    println!("\nPages Project Details:\n");
+    println!("  Name: {}", project.name);
+    println!("  ID: {}", project.id);
+    println!("  Subdomain: {}", project.subdomain);
+    println!("  Production Branch: {}", project.production_branch);
+    if let Some(framework) = &project.framework {
+        println!("  Framework: {}", framework);
+    }
+    if let Some(created) = &project.created_on {
+        println!("  Created: {}", created);
+    }
+    println!("  Uses Functions: {}", if project.uses_functions { "Yes" } else { "No" });
+
+    if !project.domains.is_empty() {
+        println!("\n  Custom Domains:");
+        for domain in &project.domains {
+            println!("    - {}", domain);
+        }
+    }
+
+    let build = &project.build_config;
+    if build.build_command.is_some() || build.destination_dir.is_some() {
+        println!("\n  Build Config:");
+        if let Some(cmd) = &build.build_command {
+            println!("    Command: {}", cmd);
+        }
+        if let Some(dir) = &build.destination_dir {
+            println!("    Output Dir: {}", dir);
+        }
+        if let Some(root) = &build.root_dir {
+            println!("    Root Dir: {}", root);
+        }
+        if let Some(caching) = build.build_caching {
+            println!("    Caching: {}", if caching { "Enabled" } else { "Disabled" });
+        }
+    }
+
+    if let Some(source) = &project.source {
+        println!("\n  Source:");
+        println!("    Type: {}", source.source_type);
+        if let Some(config) = &source.config {
+            if let Some(owner) = &config.owner {
+                println!("    Owner: {}", owner);
+            }
+            if let Some(repo) = &config.repo_name {
+                println!("    Repo: {}", repo);
+            }
+        }
+    }
+
+    if let Some(deployment) = &project.latest_deployment {
+        println!("\n  Latest Deployment:");
+        println!("    ID: {}", deployment.id);
+        if let Some(url) = &deployment.url {
+            println!("    URL: {}", url);
+        }
+        println!("    Environment: {}", deployment.environment);
+        if let Some(stage) = &deployment.latest_stage {
+            println!("    Status: {} ({})", stage.name, stage.status);
+        }
+    }
+}
+
+pub fn print_deployments(deployments: &[Deployment]) {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec![
+            Cell::new("ID")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Environment")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Status")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("URL")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Created")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+        ]);
+
+    for deployment in deployments {
+        let status = deployment
+            .latest_stage
+            .as_ref()
+            .map(|s| format!("{}: {}", s.name, s.status))
+            .unwrap_or_else(|| "-".to_string());
+
+        let status_cell = Cell::new(&status);
+        let status_cell = if status.contains("success") {
+            status_cell.fg(Color::Green)
+        } else if status.contains("failure") {
+            status_cell.fg(Color::Red)
+        } else if status.contains("active") {
+            status_cell.fg(Color::Blue)
+        } else {
+            status_cell
+        };
+
+        let env_cell = Cell::new(&deployment.environment);
+        let env_cell = if deployment.environment == "production" {
+            env_cell.fg(Color::Green)
+        } else {
+            env_cell.fg(Color::Yellow)
+        };
+
+        table.add_row(vec![
+            Cell::new(&deployment.id[..8.min(deployment.id.len())]),
+            env_cell,
+            status_cell,
+            Cell::new(deployment.url.as_deref().unwrap_or("-")),
+            Cell::new(deployment.created_on.as_deref().unwrap_or("-")),
+        ]);
+    }
+
+    println!("{}", table);
+    println!("\nTotal: {} deployments", deployments.len());
+}
+
+pub fn print_deployment(deployment: &Deployment) {
+    println!("\nDeployment Details:\n");
+    println!("  ID: {}", deployment.id);
+    if let Some(short_id) = &deployment.short_id {
+        println!("  Short ID: {}", short_id);
+    }
+    println!("  Environment: {}", deployment.environment);
+    if let Some(url) = &deployment.url {
+        println!("  URL: {}", url);
+    }
+    if let Some(created) = &deployment.created_on {
+        println!("  Created: {}", created);
+    }
+    if let Some(modified) = &deployment.modified_on {
+        println!("  Modified: {}", modified);
+    }
+    println!("  Skipped: {}", if deployment.is_skipped { "Yes" } else { "No" });
+    println!("  Uses Functions: {}", if deployment.uses_functions { "Yes" } else { "No" });
+
+    if !deployment.aliases.is_empty() {
+        println!("\n  Aliases:");
+        for alias in &deployment.aliases {
+            println!("    - {}", alias);
+        }
+    }
+
+    if let Some(trigger) = &deployment.deployment_trigger {
+        println!("\n  Trigger:");
+        println!("    Type: {}", trigger.trigger_type);
+        if let Some(meta) = &trigger.metadata {
+            if let Some(branch) = &meta.branch {
+                println!("    Branch: {}", branch);
+            }
+            if let Some(hash) = &meta.commit_hash {
+                println!("    Commit: {}", &hash[..7.min(hash.len())]);
+            }
+            if let Some(msg) = &meta.commit_message {
+                let msg_short = if msg.len() > 60 {
+                    format!("{}...", &msg[..57])
+                } else {
+                    msg.clone()
+                };
+                println!("    Message: {}", msg_short);
+            }
+        }
+    }
+
+    if !deployment.stages.is_empty() {
+        println!("\n  Stages:");
+        for stage in &deployment.stages {
+            let status_icon = match stage.status.as_str() {
+                "success" => "✓",
+                "failure" => "✗",
+                "active" => "●",
+                "skipped" => "○",
+                _ => "-",
+            };
+            println!("    {} {} ({})", status_icon, stage.name, stage.status);
+        }
+    }
+}
+
+pub fn print_pages_domains(domains: &[PagesDomain]) {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec![
+            Cell::new("Domain")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Status")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+            Cell::new("Certificate")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+        ]);
+
+    for domain in domains {
+        let status_cell = Cell::new(&domain.status);
+        let status_cell = if domain.status == "active" {
+            status_cell.fg(Color::Green)
+        } else if domain.status == "pending" {
+            status_cell.fg(Color::Yellow)
+        } else {
+            status_cell
+        };
+
+        let cert_status = domain.certificate_status.as_deref().unwrap_or("-");
+        let cert_cell = Cell::new(cert_status);
+        let cert_cell = if cert_status == "active" {
+            cert_cell.fg(Color::Green)
+        } else {
+            cert_cell
+        };
+
+        table.add_row(vec![Cell::new(&domain.name), status_cell, cert_cell]);
+    }
+
+    println!("{}", table);
+    println!("\nTotal: {} domains", domains.len());
+}
+
+pub fn print_pages_domain(domain: &PagesDomain) {
+    println!("\nDomain Details:\n");
+    println!("  Name: {}", domain.name);
+    if let Some(id) = &domain.id {
+        println!("  ID: {}", id);
+    }
+    println!("  Status: {}", domain.status);
+    if let Some(verification) = &domain.verification_status {
+        println!("  Verification: {}", verification);
+    }
+    if let Some(cert) = &domain.certificate_status {
+        println!("  Certificate: {}", cert);
+    }
+    if let Some(created) = &domain.created_on {
+        println!("  Created: {}", created);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

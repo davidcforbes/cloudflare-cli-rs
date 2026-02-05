@@ -3,6 +3,7 @@ pub mod cache;
 pub mod d1;
 pub mod dns;
 pub mod firewall;
+pub mod pages;
 pub mod r2;
 pub mod token;
 pub mod zone;

@@ -4,6 +4,7 @@ pub mod cache;
 pub mod config;
 pub mod d1;
 pub mod dns;
+pub mod pages;
 pub mod r2;
 pub mod token;
 pub mod zone;
@@ -69,6 +70,10 @@ pub enum Commands {
     /// D1 database management
     #[command(subcommand)]
     D1(d1::D1Command),
+
+    /// Pages deployment platform
+    #[command(subcommand)]
+    Pages(pages::PagesCommand),
 
     /// R2 object storage management
     #[command(subcommand)]

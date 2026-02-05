@@ -79,6 +79,7 @@ async fn run() -> Result<()> {
         Commands::Zone(cmd) => handle_zone_command(&client, cmd).await?,
         Commands::Cache(cmd) => handle_cache_command(&client, cmd).await?,
         Commands::D1(cmd) => handle_d1_command(&client, cmd).await?,
+        Commands::Pages(cmd) => handle_pages_command(&client, cmd).await?,
         Commands::R2(cmd) => handle_r2_command(&client, cmd).await?,
         Commands::Token(cmd) => handle_token_command(&client, cmd).await?,
     }
@@ -135,7 +136,7 @@ fn build_command_json(cmd: &clap::Command) -> serde_json::Value {
     let subcommands: Vec<serde_json::Value> = cmd
         .get_subcommands()
         .filter(|s| s.get_name() != "help")
-        .map(|s| build_command_json(s))
+        .map(build_command_json)
         .collect();
 
     serde_json::json!({
@@ -806,6 +807,271 @@ async fn resolve_d1_database_id(
     }
 
     Err(crate::error::CfadError::not_found("D1 database", identifier))
+}
+
+async fn handle_pages_command(
+    client: &client::CloudflareClient,
+    cmd: cli::pages::PagesCommand,
+) -> Result<()> {
+    use cli::pages::{DeployCommand, DomainCommand, PagesCommand};
+
+    match cmd {
+        PagesCommand::List { account_id } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            let projects = ops::pages::list_projects(client, &account_id).await?;
+            output::table::print_pages_projects(&projects);
+            Ok(())
+        }
+        PagesCommand::Show {
+            account_id,
+            project,
+        } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            let proj = ops::pages::get_project(client, &account_id, &project).await?;
+            output::table::print_pages_project(&proj);
+            Ok(())
+        }
+        PagesCommand::Create {
+            account_id,
+            name,
+            branch,
+            build_command,
+            output_dir,
+        } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            let build_config = if build_command.is_some() || output_dir.is_some() {
+                Some(api::pages::BuildConfig {
+                    build_command,
+                    destination_dir: output_dir,
+                    ..Default::default()
+                })
+            } else {
+                None
+            };
+            let create = api::pages::CreateProject {
+                name,
+                production_branch: Some(branch),
+                build_config,
+            };
+            ops::pages::create_project(client, &account_id, create).await?;
+            Ok(())
+        }
+        PagesCommand::Update {
+            account_id,
+            project,
+            name,
+            branch,
+            build_command,
+            output_dir,
+        } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            let build_config = if build_command.is_some() || output_dir.is_some() {
+                Some(api::pages::BuildConfig {
+                    build_command,
+                    destination_dir: output_dir,
+                    ..Default::default()
+                })
+            } else {
+                None
+            };
+            let update = api::pages::UpdateProject {
+                name,
+                production_branch: branch,
+                build_config,
+                ..Default::default()
+            };
+            ops::pages::update_project(client, &account_id, &project, update).await?;
+            Ok(())
+        }
+        PagesCommand::Delete {
+            account_id,
+            project,
+            confirm,
+        } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            if !confirm {
+                println!("⚠ Deletion requires --confirm flag");
+                return Err(crate::error::CfadError::validation("Confirmation required"));
+            }
+            ops::pages::delete_project(client, &account_id, &project).await
+        }
+        PagesCommand::PurgeCache {
+            account_id,
+            project,
+        } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            ops::pages::purge_build_cache(client, &account_id, &project).await
+        }
+        PagesCommand::Deploy(deploy_cmd) => {
+            handle_pages_deploy_command(client, deploy_cmd).await
+        }
+        PagesCommand::Domain(domain_cmd) => {
+            handle_pages_domain_command(client, domain_cmd).await
+        }
+    }
+}
+
+async fn handle_pages_deploy_command(
+    client: &client::CloudflareClient,
+    cmd: cli::pages::DeployCommand,
+) -> Result<()> {
+    use cli::pages::DeployCommand;
+
+    match cmd {
+        DeployCommand::List {
+            account_id,
+            project,
+        } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            let deployments = ops::pages::list_deployments(client, &account_id, &project).await?;
+            output::table::print_deployments(&deployments);
+            Ok(())
+        }
+        DeployCommand::Show {
+            account_id,
+            project,
+            deployment_id,
+        } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            let deployment =
+                ops::pages::get_deployment(client, &account_id, &project, &deployment_id).await?;
+            output::table::print_deployment(&deployment);
+            Ok(())
+        }
+        DeployCommand::Create {
+            account_id,
+            project,
+        } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            let deployment = ops::pages::create_deployment(client, &account_id, &project).await?;
+            output::table::print_deployment(&deployment);
+            Ok(())
+        }
+        DeployCommand::Delete {
+            account_id,
+            project,
+            deployment_id,
+            confirm,
+        } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            if !confirm {
+                println!("⚠ Deletion requires --confirm flag");
+                return Err(crate::error::CfadError::validation("Confirmation required"));
+            }
+            ops::pages::delete_deployment(client, &account_id, &project, &deployment_id).await
+        }
+        DeployCommand::Retry {
+            account_id,
+            project,
+            deployment_id,
+        } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            let deployment =
+                ops::pages::retry_deployment(client, &account_id, &project, &deployment_id).await?;
+            output::table::print_deployment(&deployment);
+            Ok(())
+        }
+        DeployCommand::Rollback {
+            account_id,
+            project,
+            deployment_id,
+            confirm,
+        } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            if !confirm {
+                println!("⚠ Rollback requires --confirm flag");
+                return Err(crate::error::CfadError::validation("Confirmation required"));
+            }
+            let deployment =
+                ops::pages::rollback_deployment(client, &account_id, &project, &deployment_id)
+                    .await?;
+            output::table::print_deployment(&deployment);
+            Ok(())
+        }
+        DeployCommand::Logs {
+            account_id,
+            project,
+            deployment_id,
+        } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            let logs =
+                ops::pages::get_deployment_logs(client, &account_id, &project, &deployment_id)
+                    .await?;
+            println!("\nBuild Logs:\n");
+            for line in &logs.data {
+                if let Some(ts) = &line.ts {
+                    println!("[{}] {}", ts, line.line);
+                } else {
+                    println!("{}", line.line);
+                }
+            }
+            if logs.has_more {
+                println!("\n... (more logs available)");
+            }
+            Ok(())
+        }
+    }
+}
+
+async fn handle_pages_domain_command(
+    client: &client::CloudflareClient,
+    cmd: cli::pages::DomainCommand,
+) -> Result<()> {
+    use cli::pages::DomainCommand;
+
+    match cmd {
+        DomainCommand::List {
+            account_id,
+            project,
+        } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            let domains = ops::pages::list_domains(client, &account_id, &project).await?;
+            output::table::print_pages_domains(&domains);
+            Ok(())
+        }
+        DomainCommand::Show {
+            account_id,
+            project,
+            domain,
+        } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            let dom = ops::pages::get_domain(client, &account_id, &project, &domain).await?;
+            output::table::print_pages_domain(&dom);
+            Ok(())
+        }
+        DomainCommand::Add {
+            account_id,
+            project,
+            domain,
+        } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            let add = api::pages::AddDomain { name: domain };
+            ops::pages::add_domain(client, &account_id, &project, add).await?;
+            Ok(())
+        }
+        DomainCommand::Verify {
+            account_id,
+            project,
+            domain,
+        } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            ops::pages::verify_domain(client, &account_id, &project, &domain).await?;
+            Ok(())
+        }
+        DomainCommand::Delete {
+            account_id,
+            project,
+            domain,
+            confirm,
+        } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            if !confirm {
+                println!("⚠ Deletion requires --confirm flag");
+                return Err(crate::error::CfadError::validation("Confirmation required"));
+            }
+            ops::pages::delete_domain(client, &account_id, &project, &domain).await
+        }
+    }
 }
 
 async fn handle_r2_command(
