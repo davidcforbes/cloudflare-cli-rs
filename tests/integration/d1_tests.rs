@@ -68,8 +68,8 @@ fn test_d1_database_with_null_fields() {
         "created_at": null
     }"#;
 
-    let db: D1Database = serde_json::from_str(json)
-        .expect("Failed to deserialize D1Database with null fields");
+    let db: D1Database =
+        serde_json::from_str(json).expect("Failed to deserialize D1Database with null fields");
 
     assert_eq!(db.uuid, "test-uuid");
     assert_eq!(db.name, "test-db");
@@ -88,8 +88,8 @@ fn test_d1_database_with_missing_fields() {
         "name": "test-db"
     }"#;
 
-    let db: D1Database = serde_json::from_str(json)
-        .expect("Failed to deserialize D1Database with missing fields");
+    let db: D1Database =
+        serde_json::from_str(json).expect("Failed to deserialize D1Database with missing fields");
 
     assert_eq!(db.uuid, "test-uuid");
     assert_eq!(db.name, "test-db");
@@ -107,8 +107,8 @@ fn test_result_info_without_total_pages() {
         "total_count": 100
     }"#;
 
-    let info: ResultInfo = serde_json::from_str(json)
-        .expect("Failed to deserialize ResultInfo without total_pages");
+    let info: ResultInfo =
+        serde_json::from_str(json).expect("Failed to deserialize ResultInfo without total_pages");
 
     assert_eq!(info.count, 5);
     assert_eq!(info.page, 1);
@@ -121,8 +121,8 @@ fn test_result_info_without_total_pages() {
 #[test]
 fn test_d1_list_fixture_parses() {
     let json = include_str!("../fixtures/d1_database_list_response.json");
-    let response: CfResponse<Vec<D1Database>> = serde_json::from_str(json)
-        .expect("Failed to parse d1_database_list_response.json fixture");
+    let response: CfResponse<Vec<D1Database>> =
+        serde_json::from_str(json).expect("Failed to parse d1_database_list_response.json fixture");
 
     assert!(response.success);
     let databases = response.result.unwrap();
