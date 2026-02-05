@@ -1,4 +1,7 @@
-use cfad::api::d1::{CreateD1Database, D1Database, UpdateD1Database};
+use cfad::api::d1::{
+    CreateD1Database, D1Bookmark, D1Database, D1ExportResponse, D1ImportResponse, D1RawQueryResult,
+    D1RestoreResponse, UpdateD1Database,
+};
 use cfad::client::{CfResponse, CloudflareClient, ResultInfo};
 use cfad::config::AuthMethod;
 use cfad::ops::d1;
@@ -425,4 +428,259 @@ async fn test_list_databases_empty() {
     let databases = d1::list_databases(&client, "acc123").await.unwrap();
 
     assert!(databases.is_empty());
+}
+
+// =============================================================================
+// ADVANCED D1 OPERATIONS TESTS
+// =============================================================================
+
+#[tokio::test]
+async fn test_query_database_raw_success() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/accounts/acc123/d1/database/db-uuid-1/raw"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true,
+            "result": [{
+                "columns": ["id", "name", "email"],
+                "rows": [
+                    [1, "Alice", "alice@example.com"],
+                    [2, "Bob", "bob@example.com"]
+                ],
+                "success": true,
+                "meta": {
+                    "duration": 0.3,
+                    "rows_read": 2,
+                    "rows_written": 0,
+                    "last_row_id": 0,
+                    "changes": 0,
+                    "size_after": 102400,
+                    "served_by_cache": false
+                }
+            }],
+            "errors": [],
+            "messages": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = create_test_client(&mock_server).await;
+    let results =
+        d1::query_database_raw(&client, "acc123", "db-uuid-1", "SELECT * FROM users", None)
+            .await
+            .unwrap();
+
+    assert_eq!(results.len(), 1);
+    assert!(results[0].success);
+    assert_eq!(results[0].columns, vec!["id", "name", "email"]);
+    assert_eq!(results[0].rows.len(), 2);
+}
+
+#[test]
+fn test_d1_raw_query_result_deserialization() {
+    let json = r#"{
+        "columns": ["id", "name"],
+        "rows": [[1, "Test"], [2, "Data"]],
+        "success": true,
+        "meta": {
+            "duration": 0.5,
+            "rows_read": 2,
+            "rows_written": 0
+        }
+    }"#;
+
+    let result: D1RawQueryResult =
+        serde_json::from_str(json).expect("Failed to deserialize D1RawQueryResult");
+
+    assert!(result.success);
+    assert_eq!(result.columns.len(), 2);
+    assert_eq!(result.rows.len(), 2);
+}
+
+#[tokio::test]
+async fn test_export_database_success() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/accounts/acc123/d1/database/db-uuid-1/export"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true,
+            "result": {
+                "task_id": "task-123",
+                "status": "complete",
+                "signed_url": "https://example.com/export.sql",
+                "error": null
+            },
+            "errors": [],
+            "messages": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = create_test_client(&mock_server).await;
+    let result = d1::export_database(&client, "acc123", "db-uuid-1")
+        .await
+        .unwrap();
+
+    assert_eq!(result.task_id, "task-123");
+    assert_eq!(result.status, "complete");
+    assert_eq!(
+        result.signed_url,
+        Some("https://example.com/export.sql".to_string())
+    );
+}
+
+#[test]
+fn test_d1_export_response_deserialization() {
+    let json = r#"{
+        "task_id": "task-456",
+        "status": "pending",
+        "signed_url": null,
+        "error": null
+    }"#;
+
+    let result: D1ExportResponse =
+        serde_json::from_str(json).expect("Failed to deserialize D1ExportResponse");
+
+    assert_eq!(result.task_id, "task-456");
+    assert_eq!(result.status, "pending");
+    assert!(result.signed_url.is_none());
+}
+
+#[tokio::test]
+async fn test_import_database_success() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/accounts/acc123/d1/database/db-uuid-1/import"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true,
+            "result": {
+                "num_queries": 15,
+                "success": true,
+                "error": null
+            },
+            "errors": [],
+            "messages": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = create_test_client(&mock_server).await;
+    let result = d1::import_database(
+        &client,
+        "acc123",
+        "db-uuid-1",
+        "CREATE TABLE test (id INT);",
+    )
+    .await
+    .unwrap();
+
+    assert!(result.success);
+    assert_eq!(result.num_queries, 15);
+}
+
+#[test]
+fn test_d1_import_response_deserialization() {
+    let json = r#"{
+        "num_queries": 25,
+        "success": true,
+        "error": null
+    }"#;
+
+    let result: D1ImportResponse =
+        serde_json::from_str(json).expect("Failed to deserialize D1ImportResponse");
+
+    assert!(result.success);
+    assert_eq!(result.num_queries, 25);
+}
+
+#[tokio::test]
+async fn test_get_bookmark_success() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/accounts/acc123/d1/database/db-uuid-1/time_travel/bookmark",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true,
+            "result": {
+                "bookmark": "bk_abc123def456",
+                "timestamp": "2026-02-04T10:30:00Z"
+            },
+            "errors": [],
+            "messages": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = create_test_client(&mock_server).await;
+    let result = d1::get_bookmark(&client, "acc123", "db-uuid-1", None)
+        .await
+        .unwrap();
+
+    assert_eq!(result.bookmark, "bk_abc123def456");
+    assert_eq!(result.timestamp, "2026-02-04T10:30:00Z");
+}
+
+#[test]
+fn test_d1_bookmark_deserialization() {
+    let json = r#"{
+        "bookmark": "bk_test123",
+        "timestamp": "2026-01-15T08:00:00Z"
+    }"#;
+
+    let result: D1Bookmark = serde_json::from_str(json).expect("Failed to deserialize D1Bookmark");
+
+    assert_eq!(result.bookmark, "bk_test123");
+    assert_eq!(result.timestamp, "2026-01-15T08:00:00Z");
+}
+
+#[tokio::test]
+async fn test_restore_database_success() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(
+            "/accounts/acc123/d1/database/db-uuid-1/time_travel/restore",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true,
+            "result": {
+                "success": true,
+                "bookmark": "bk_restored123",
+                "num_queries_replayed": 42
+            },
+            "errors": [],
+            "messages": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = create_test_client(&mock_server).await;
+    let result = d1::restore_database(&client, "acc123", "db-uuid-1", Some("bk_abc123"), None)
+        .await
+        .unwrap();
+
+    assert!(result.success);
+    assert_eq!(result.bookmark, "bk_restored123");
+    assert_eq!(result.num_queries_replayed, 42);
+}
+
+#[test]
+fn test_d1_restore_response_deserialization() {
+    let json = r#"{
+        "success": true,
+        "bookmark": "bk_after_restore",
+        "num_queries_replayed": 100
+    }"#;
+
+    let result: D1RestoreResponse =
+        serde_json::from_str(json).expect("Failed to deserialize D1RestoreResponse");
+
+    assert!(result.success);
+    assert_eq!(result.bookmark, "bk_after_restore");
+    assert_eq!(result.num_queries_replayed, 100);
 }

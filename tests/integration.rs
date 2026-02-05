@@ -9,5 +9,6 @@ mod integration {
     mod dns_tests;
     mod error_tests;
     mod r2_tests;
+    mod token_tests;
     mod zone_tests;
 }
