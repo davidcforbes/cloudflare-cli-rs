@@ -321,7 +321,7 @@ cfad dns list example.com --name www
 
 **Output:**
 
-```
+```text
 DNS Records for example.com:
 
 ╔══════╦═══════════════════╦════════════════╦══════╦═════════╦══════════╗
@@ -357,7 +357,7 @@ cfad dns show example.com <record-id>
 
 **Output:**
 
-```
+```text
 DNS Record Details:
 
   ID: abc123...
@@ -438,7 +438,7 @@ cfad zone list --status active
 
 **Output:**
 
-```
+```text
 Zones:
 
 ╔═══════════════════╦════════╦══════════╗
@@ -462,7 +462,7 @@ cfad zone show <zone-id>
 
 **Output:**
 
-```
+```text
 Zone: example.com
   ID: abc123...
   Status: active
@@ -1015,7 +1015,7 @@ cfad config show production
 
 **Output:**
 
-```
+```text
 Profile configuration:
   API Token: Some("abcd****")
   API Key: None
@@ -1380,6 +1380,7 @@ make quality-check
 ```
 
 The `/quality` Claude Skill runs comprehensive checks:
+
 - Code formatting (cargo fmt)
 - Linting (cargo clippy with zero warnings)
 - Tests (all 68 tests)
@@ -1509,6 +1510,7 @@ If you find CFAD useful, consider supporting its development:
 [![GitHub Sponsors](https://img.shields.io/github/sponsors/davidcforbes?style=for-the-badge&logo=github&label=Sponsor&color=EA4AAA)](https://github.com/sponsors/davidcforbes)
 
 Your sponsorship helps:
+
 - 🚀 Accelerate new feature development
 - 🐛 Improve bug fixes and maintenance
 - 📚 Enhance documentation and examples

@@ -20,13 +20,15 @@ Include:
 - Potential impact
 - Suggested fix (if any)
 
-You should receive a response within 48 hours. We will work with you to understand and address the issue.
+You should receive a response within 48 hours.
+We will work with you to understand and address the issue.
 
 ## Security Best Practices
 
 When using cfad:
 
-- Store API tokens securely (use config file with proper permissions or environment variables)
+- Store API tokens securely (use config file with proper permissions
+  or environment variables)
 - Never commit API tokens to version control
 - Use the principle of least privilege for API tokens
 - Regularly rotate API credentials

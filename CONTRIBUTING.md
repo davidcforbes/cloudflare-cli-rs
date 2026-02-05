@@ -1,16 +1,19 @@
 # Contributing to CFAD (Cloudflare Admin CLI)
 
-Thank you for your interest in contributing to CFAD! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to CFAD! This document
+provides guidelines and instructions for contributing.
 
 ## Code of Conduct
 
-This project adheres to a Code of Conduct (see CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+This project adheres to a Code of Conduct (see CODE_OF_CONDUCT.md).
+By participating, you are expected to uphold this code.
 
 ## How Can I Contribute?
 
 ### Reporting Bugs
 
-Before creating bug reports, please check existing issues to avoid duplicates. When creating a bug report, include:
+Before creating bug reports, please check existing issues to avoid
+duplicates. When creating a bug report, include:
 
 - **Clear title and description**
 - **Steps to reproduce** the issue
@@ -82,7 +85,7 @@ cargo build --release
 
 ### Project Structure
 
-```
+```text
 cloudflare-cli-rs/
 ├── src/
 │   ├── main.rs          # CLI entry point
@@ -182,7 +185,7 @@ async fn test_list_zones() {
 
 Use [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
+```text
 <type>(<scope>): <description>
 
 [optional body]
@@ -202,7 +205,7 @@ Types:
 
 Examples:
 
-```
+```text
 feat(dns): add BIND zone file import support
 fix(client): handle rate limiting correctly
 docs(readme): update installation instructions
@@ -273,8 +276,9 @@ Contributors are recognized in:
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+By contributing, you agree that your contributions will be licensed
+under the MIT License.
 
 ---
 
-**Thank you for contributing to CFAD!** 🎉
+**Thank you for contributing to CFAD!**

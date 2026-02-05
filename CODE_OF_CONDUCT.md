@@ -2,7 +2,8 @@
 
 ## Our Pledge
 
-We are committed to providing a welcoming and inclusive environment for all contributors.
+We are committed to providing a welcoming and inclusive environment
+for all contributors.
 
 ## Standards
 
@@ -22,7 +23,8 @@ Examples of unacceptable behavior:
 
 ## Enforcement
 
-Project maintainers are responsible for clarifying standards and taking appropriate action in response to unacceptable behavior.
+Project maintainers are responsible for clarifying standards and taking
+appropriate action in response to unacceptable behavior.
 
 ## Contact
 
