@@ -109,7 +109,8 @@ async fn test_list_zones_empty() {
 async fn test_get_zone_by_id() {
     let mock_server = MockServer::start().await;
 
-    let zone_id = "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6";
+    // Must be 32 hex characters for direct zone ID lookup
+    let zone_id = "a1b2c3d4e5f60718293a4b5c6d7e8f90";
 
     Mock::given(method("GET"))
         .and(path(format!("/zones/{}", zone_id)))
@@ -138,7 +139,7 @@ async fn test_get_zone_by_name() {
         .and(query_param("name", "example.com"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "success": true,
-            "result": create_zone_json("zone123", "example.com", "active"),
+            "result": [create_zone_json("zone123", "example.com", "active")],
             "errors": [],
             "messages": []
         })))
@@ -160,7 +161,7 @@ async fn test_get_zone_not_found() {
         .and(query_param("name", "notfound.com"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "success": true,
-            "result": null,
+            "result": [],
             "errors": [],
             "messages": []
         })))

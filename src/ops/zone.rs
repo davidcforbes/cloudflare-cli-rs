@@ -15,17 +15,22 @@ pub async fn list_zones(client: &CloudflareClient, status: Option<&str>) -> Resu
 }
 
 pub async fn get_zone(client: &CloudflareClient, zone_identifier: &str) -> Result<Zone> {
-    // Try zone ID first, then zone name
-    let endpoint = if zone_identifier.len() == 32 {
-        format!("/zones/{}", zone_identifier)
-    } else {
-        format!("/zones?name={}", zone_identifier)
-    };
+    // If it looks like a zone ID (32 hex chars), fetch directly
+    if zone_identifier.len() == 32 && zone_identifier.chars().all(|c| c.is_ascii_hexdigit()) {
+        let endpoint = format!("/zones/{}", zone_identifier);
+        let response: CfResponse<Zone> = client.get(&endpoint).await?;
+        return response
+            .result
+            .ok_or_else(|| crate::error::CfadError::not_found("Zone", zone_identifier));
+    }
 
-    let response: CfResponse<Zone> = client.get(&endpoint).await?;
+    // Otherwise, search by name (returns a list)
+    let endpoint = format!("/zones?name={}", zone_identifier);
+    let response: CfResponse<Vec<Zone>> = client.get(&endpoint).await?;
 
     response
         .result
+        .and_then(|zones| zones.into_iter().next())
         .ok_or_else(|| crate::error::CfadError::not_found("Zone", zone_identifier))
 }
 
