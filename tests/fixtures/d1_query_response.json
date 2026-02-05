@@ -1,0 +1,23 @@
+{
+  "result": [
+    {
+      "results": [
+        {"id": 1, "name": "Alice", "email": "alice@example.com"},
+        {"id": 2, "name": "Bob", "email": "bob@example.com"}
+      ],
+      "success": true,
+      "meta": {
+        "duration": 0.5,
+        "rows_read": 2,
+        "rows_written": 0,
+        "last_row_id": 0,
+        "changes": 0,
+        "size_after": 151552,
+        "served_by_cache": false
+      }
+    }
+  ],
+  "errors": [],
+  "messages": [],
+  "success": true
+}

@@ -1,0 +1,14 @@
+{
+  "result": {
+    "uuid": "9b783f77-78de-47e1-abea-94deae6a0038",
+    "name": "policy-factory-discussions",
+    "created_at": "2026-02-01T10:36:58.688Z",
+    "version": "production",
+    "num_tables": 3,
+    "file_size": 151552,
+    "jurisdiction": null
+  },
+  "errors": [],
+  "messages": [],
+  "success": true
+}

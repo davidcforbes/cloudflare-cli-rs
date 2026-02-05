@@ -4,6 +4,7 @@
 mod integration {
     mod cache_tests;
     mod client_tests;
+    mod d1_tests;
     mod dns_import_tests;
     mod dns_tests;
     mod error_tests;
