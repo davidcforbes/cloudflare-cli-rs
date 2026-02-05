@@ -1,5 +1,14 @@
 use serde::{Deserialize, Serialize};
 
+/// Deserialize null as default value (empty string, 0, etc.)
+fn deserialize_null_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Default + Deserialize<'de>,
+{
+    Ok(Option::deserialize(deserializer)?.unwrap_or_default())
+}
+
 /// D1 Database representation from Cloudflare API
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct D1Database {
@@ -8,16 +17,16 @@ pub struct D1Database {
     /// Name of the database
     pub name: String,
     /// Version of the database (alpha, beta, etc.)
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_default")]
     pub version: String,
     /// Number of tables in the database
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_default")]
     pub num_tables: u32,
     /// Size of the database file in bytes
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_default")]
     pub file_size: u64,
     /// When the database was created
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_default")]
     pub created_at: String,
 }
 

@@ -166,7 +166,18 @@ impl CloudflareClient {
             });
         }
 
-        let cf_response: CfResponse<T> = response.json().await?;
+        // Get response text first for better error messages
+        let text = response.text().await?;
+        let cf_response: CfResponse<T> = serde_json::from_str(&text).map_err(|e| {
+            // Log the first 500 chars of response for debugging
+            let preview = if text.len() > 500 {
+                format!("{}...", &text[..500])
+            } else {
+                text.clone()
+            };
+            log::debug!("Failed to parse response: {}", preview);
+            CfadError::Other(format!("JSON parse error: {} - Response: {}", e, preview))
+        })?;
 
         if !cf_response.success {
             return Err(CfadError::from_cf_errors(
