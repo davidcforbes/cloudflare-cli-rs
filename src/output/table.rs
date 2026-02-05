@@ -1,4 +1,4 @@
-use crate::api::d1::D1Database;
+use crate::api::d1::{D1Database, D1QueryResult, D1RawQueryResult};
 use crate::api::dns::DnsRecord;
 use crate::api::r2::{R2Bucket, R2CustomDomain, R2EventNotification, R2Metrics, R2MigrationJob};
 use crate::api::token::{PermissionGroup, Token};
@@ -153,6 +153,140 @@ pub fn print_d1_database(db: &D1Database) {
     println!("  Tables: {}", db.num_tables);
     println!("  Size: {}", format_bytes(db.file_size));
     println!("  Created: {}", db.created_at);
+}
+
+/// Print D1 query results (object format) as a table
+pub fn print_d1_query_results(results: &[D1QueryResult]) {
+    for (i, result) in results.iter().enumerate() {
+        if results.len() > 1 {
+            println!("\n--- Result Set {} ---", i + 1);
+        }
+
+        if result.results.is_empty() {
+            println!("\nNo rows returned.");
+            continue;
+        }
+
+        // Extract column names from first row
+        let first_row = &result.results[0];
+        let columns: Vec<String> = if let Some(obj) = first_row.as_object() {
+            obj.keys().cloned().collect()
+        } else {
+            vec!["value".to_string()]
+        };
+
+        let mut table = Table::new();
+        table
+            .load_preset(UTF8_FULL)
+            .set_content_arrangement(ContentArrangement::Dynamic);
+
+        // Set header
+        let header: Vec<Cell> = columns
+            .iter()
+            .map(|col| {
+                Cell::new(col)
+                    .add_attribute(Attribute::Bold)
+                    .fg(Color::Cyan)
+            })
+            .collect();
+        table.set_header(header);
+
+        // Add rows
+        for row in &result.results {
+            let cells: Vec<Cell> = columns
+                .iter()
+                .map(|col| {
+                    let value = row.get(col).unwrap_or(&serde_json::Value::Null);
+                    Cell::new(format_json_value(value))
+                })
+                .collect();
+            table.add_row(cells);
+        }
+
+        println!("{}", table);
+        println!(
+            "\n{} row(s) returned in {:.3}s",
+            result.results.len(),
+            result.meta.duration
+        );
+    }
+}
+
+/// Print D1 raw query results (array format) as a table
+pub fn print_d1_raw_query_results(results: &[D1RawQueryResult]) {
+    for (i, result) in results.iter().enumerate() {
+        if results.len() > 1 {
+            println!("\n--- Result Set {} ---", i + 1);
+        }
+
+        if result.rows.is_empty() {
+            println!("\nNo rows returned.");
+            continue;
+        }
+
+        let mut table = Table::new();
+        table
+            .load_preset(UTF8_FULL)
+            .set_content_arrangement(ContentArrangement::Dynamic);
+
+        // Set header from columns
+        let header: Vec<Cell> = result
+            .columns
+            .iter()
+            .map(|col| {
+                Cell::new(col)
+                    .add_attribute(Attribute::Bold)
+                    .fg(Color::Cyan)
+            })
+            .collect();
+        table.set_header(header);
+
+        // Add rows
+        for row in &result.rows {
+            let cells: Vec<Cell> = row.iter().map(|v| Cell::new(format_json_value(v))).collect();
+            table.add_row(cells);
+        }
+
+        println!("{}", table);
+        println!(
+            "\n{} row(s) returned in {:.3}s",
+            result.rows.len(),
+            result.meta.duration
+        );
+    }
+}
+
+/// Format a JSON value for table display
+fn format_json_value(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::Null => "NULL".to_string(),
+        serde_json::Value::Bool(b) => b.to_string(),
+        serde_json::Value::Number(n) => n.to_string(),
+        serde_json::Value::String(s) => {
+            // Truncate long strings for table display
+            if s.len() > 50 {
+                format!("{}...", &s[..47])
+            } else {
+                s.clone()
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            let json = serde_json::to_string(arr).unwrap_or_default();
+            if json.len() > 50 {
+                format!("{}...", &json[..47])
+            } else {
+                json
+            }
+        }
+        serde_json::Value::Object(obj) => {
+            let json = serde_json::to_string(obj).unwrap_or_default();
+            if json.len() > 50 {
+                format!("{}...", &json[..47])
+            } else {
+                json
+            }
+        }
+    }
 }
 
 pub fn print_r2_buckets(buckets: &[R2Bucket]) {

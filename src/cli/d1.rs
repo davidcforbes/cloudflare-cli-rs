@@ -76,6 +76,10 @@ pub enum D1Command {
         /// Use raw output format (arrays instead of objects)
         #[arg(long)]
         raw: bool,
+
+        /// Output format: json (default) or table
+        #[arg(long, default_value = "json")]
+        format: String,
     },
 
     /// Show database schema (tables, columns, indexes)
@@ -107,6 +111,10 @@ pub enum D1Command {
         /// Use raw output format (arrays instead of objects)
         #[arg(long)]
         raw: bool,
+
+        /// Output format: json (default) or table
+        #[arg(long, default_value = "json")]
+        format: String,
     },
 
     /// Export a D1 database to SQL

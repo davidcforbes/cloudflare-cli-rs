@@ -511,17 +511,26 @@ async fn handle_d1_command(
             database_id,
             sql,
             raw,
+            format,
         } => {
             let account_id = resolve_account_id(account_id, None)?;
             let db_id = resolve_d1_database_id(client, &account_id, &database_id).await?;
             if raw {
                 let results =
                     ops::d1::query_database_raw(client, &account_id, &db_id, &sql, None).await?;
-                println!("{}", serde_json::to_string_pretty(&results)?);
+                if format == "table" {
+                    output::table::print_d1_raw_query_results(&results);
+                } else {
+                    println!("{}", serde_json::to_string_pretty(&results)?);
+                }
             } else {
                 let results =
                     ops::d1::query_database(client, &account_id, &db_id, &sql, None).await?;
-                println!("{}", serde_json::to_string_pretty(&results)?);
+                if format == "table" {
+                    output::table::print_d1_query_results(&results);
+                } else {
+                    println!("{}", serde_json::to_string_pretty(&results)?);
+                }
             }
             Ok(())
         }
@@ -530,6 +539,7 @@ async fn handle_d1_command(
             database_id,
             file,
             raw,
+            format,
         } => {
             let account_id = resolve_account_id(account_id, None)?;
             let db_id = resolve_d1_database_id(client, &account_id, &database_id).await?;
@@ -537,11 +547,19 @@ async fn handle_d1_command(
             if raw {
                 let results =
                     ops::d1::query_database_raw(client, &account_id, &db_id, &sql, None).await?;
-                println!("{}", serde_json::to_string_pretty(&results)?);
+                if format == "table" {
+                    output::table::print_d1_raw_query_results(&results);
+                } else {
+                    println!("{}", serde_json::to_string_pretty(&results)?);
+                }
             } else {
                 let results =
                     ops::d1::query_database(client, &account_id, &db_id, &sql, None).await?;
-                println!("{}", serde_json::to_string_pretty(&results)?);
+                if format == "table" {
+                    output::table::print_d1_query_results(&results);
+                } else {
+                    println!("{}", serde_json::to_string_pretty(&results)?);
+                }
             }
             Ok(())
         }
