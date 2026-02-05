@@ -1,4 +1,13 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+
+/// Deserialize null or missing values as the default for the type
+fn null_to_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Default + Deserialize<'de>,
+{
+    Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
+}
 
 /// A Cloudflare Pages project
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -14,7 +23,7 @@ pub struct PagesProject {
     #[serde(default)]
     pub production_branch: String,
     /// Custom domains attached to the project
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_to_default")]
     pub domains: Vec<String>,
     /// Detected or configured framework (e.g., "next-js", "react")
     #[serde(default)]
@@ -41,7 +50,7 @@ pub struct PagesProject {
     #[serde(default)]
     pub canonical_deployment: Option<Deployment>,
     /// Whether the project uses Pages Functions
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_to_default")]
     pub uses_functions: bool,
     /// Production worker script name
     #[serde(default)]
@@ -49,6 +58,9 @@ pub struct PagesProject {
     /// Preview worker script name
     #[serde(default)]
     pub preview_script_name: Option<String>,
+    /// Catch any additional fields
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Build configuration for a Pages project
@@ -95,8 +107,14 @@ pub struct EnvironmentConfig {
     #[serde(default)]
     pub compatibility_date: Option<String>,
     /// Compatibility flags
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_to_default")]
     pub compatibility_flags: Vec<String>,
+    /// Whether to fail open on errors
+    #[serde(default)]
+    pub fail_open: Option<bool>,
+    /// Always use latest compatibility date
+    #[serde(default)]
+    pub always_use_latest_compatibility_date: Option<bool>,
     /// D1 database bindings
     #[serde(default)]
     pub d1_databases: Option<serde_json::Value>,
@@ -115,6 +133,9 @@ pub struct EnvironmentConfig {
     /// Queue bindings
     #[serde(default)]
     pub queues: Option<serde_json::Value>,
+    /// Catch any additional fields
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Source repository configuration
@@ -147,10 +168,10 @@ pub struct RepoConfig {
     #[serde(default)]
     pub deployments_enabled: Option<bool>,
     /// Branch patterns for preview deployments
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_to_default")]
     pub preview_branch_includes: Vec<String>,
     /// Branch patterns to exclude from preview
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_to_default")]
     pub preview_branch_excludes: Vec<String>,
 }
 
@@ -178,16 +199,16 @@ pub struct Deployment {
     #[serde(default)]
     pub modified_on: Option<String>,
     /// Alias URLs for this deployment
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_to_default")]
     pub aliases: Vec<String>,
     /// Build and deploy stages
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_to_default")]
     pub stages: Vec<Stage>,
     /// Current/latest stage
     #[serde(default)]
     pub latest_stage: Option<Stage>,
     /// Whether the build was skipped
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_to_default")]
     pub is_skipped: bool,
     /// What triggered this deployment
     #[serde(default)]
@@ -199,11 +220,14 @@ pub struct Deployment {
     #[serde(default)]
     pub env_vars: Option<serde_json::Value>,
     /// Whether the deployment uses Functions
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_to_default")]
     pub uses_functions: bool,
     /// Short deployment ID
     #[serde(default)]
     pub short_id: Option<String>,
+    /// Catch any additional fields
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// A stage in the deployment pipeline
