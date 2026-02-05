@@ -44,8 +44,12 @@ pub struct Cli {
     #[arg(short, long, global = true)]
     pub verbose: bool,
 
+    /// Print help in JSON format (for scripts/AI agents)
+    #[arg(long, global = true)]
+    pub help_json: bool,
+
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
 }
 
 #[derive(Subcommand)]

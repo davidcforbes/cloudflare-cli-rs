@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use log::error;
 use std::process;
 
@@ -34,21 +34,46 @@ async fn run() -> Result<()> {
     let cli = Cli::parse();
     cli::setup_logging(cli.verbose, cli.quiet);
 
+    // Handle --help-json flag
+    if cli.help_json {
+        print_help_json();
+        return Ok(());
+    }
+
+    // Require a command if not using --help-json
+    let command = match cli.command {
+        Some(cmd) => cmd,
+        None => {
+            let _ = Cli::command().print_help();
+            return Err(crate::error::CfadError::validation("No command provided"));
+        }
+    };
+
     // Handle config commands first (they don't need API auth)
-    if let Commands::Config(cmd) = cli.command {
+    if let Commands::Config(cmd) = command {
         return handle_config_command(cmd).await;
     }
 
     // Load configuration and apply CLI overrides
     let mut profile = Config::load(cli.profile.as_deref())?;
-    apply_cli_overrides(&mut profile, &cli);
+    if let Some(api_token) = &cli.api_token {
+        profile.api_token = Some(api_token.clone());
+        profile.api_key = None;
+        profile.api_email = None;
+    }
+    if let Some(api_key) = &cli.api_key {
+        profile.api_key = Some(api_key.clone());
+    }
+    if let Some(api_email) = &cli.api_email {
+        profile.api_email = Some(api_email.clone());
+    }
 
     // Get auth method and create client
     let auth = profile.auth_method()?;
     let client = client::CloudflareClient::new(auth)?;
 
     // Handle commands
-    match cli.command {
+    match command {
         Commands::Config(_) => unreachable!("Config handled above"),
         Commands::Dns(cmd) => handle_dns_command(&client, cmd).await?,
         Commands::Zone(cmd) => handle_zone_command(&client, cmd).await?,
@@ -61,20 +86,65 @@ async fn run() -> Result<()> {
     Ok(())
 }
 
-fn apply_cli_overrides(profile: &mut Profile, cli: &Cli) {
-    if let Some(api_token) = &cli.api_token {
-        profile.api_token = Some(api_token.clone());
-        profile.api_key = None;
-        profile.api_email = None;
+fn print_help_json() {
+    let cmd = Cli::command();
+    let help = build_command_json(&cmd);
+    println!("{}", serde_json::to_string_pretty(&help).unwrap());
+}
+
+fn build_command_json(cmd: &clap::Command) -> serde_json::Value {
+    let mut options = Vec::new();
+    for arg in cmd.get_arguments() {
+        if arg.is_positional() {
+            continue;
+        }
+        let mut opt = serde_json::json!({
+            "name": arg.get_id().as_str(),
+            "short": arg.get_short().map(|c| c.to_string()),
+            "long": arg.get_long(),
+            "help": arg.get_help().map(|h| h.to_string()),
+            "required": arg.is_required_set(),
+        });
+        let possible_values = arg.get_possible_values();
+        if !possible_values.is_empty() {
+            let values: Vec<String> = possible_values
+                .iter()
+                .map(|v| v.get_name().to_string())
+                .collect();
+            opt["possible_values"] = serde_json::json!(values);
+        }
+        let defaults = arg.get_default_values();
+        if let Some(default) = defaults.first() {
+            opt["default"] = serde_json::json!(default.to_str());
+        }
+        options.push(opt);
     }
 
-    if let Some(api_key) = &cli.api_key {
-        profile.api_key = Some(api_key.clone());
+    let mut positionals = Vec::new();
+    for arg in cmd.get_arguments() {
+        if !arg.is_positional() {
+            continue;
+        }
+        positionals.push(serde_json::json!({
+            "name": arg.get_id().as_str(),
+            "help": arg.get_help().map(|h| h.to_string()),
+            "required": arg.is_required_set(),
+        }));
     }
 
-    if let Some(api_email) = &cli.api_email {
-        profile.api_email = Some(api_email.clone());
-    }
+    let subcommands: Vec<serde_json::Value> = cmd
+        .get_subcommands()
+        .filter(|s| s.get_name() != "help")
+        .map(|s| build_command_json(s))
+        .collect();
+
+    serde_json::json!({
+        "name": cmd.get_name(),
+        "about": cmd.get_about().map(|a| a.to_string()),
+        "options": options,
+        "positionals": positionals,
+        "subcommands": subcommands,
+    })
 }
 
 async fn handle_dns_command(
