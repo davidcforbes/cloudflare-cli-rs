@@ -542,6 +542,14 @@ async fn handle_d1_command(
             }
             Ok(())
         }
+        D1Command::Schema {
+            account_id,
+            database_id,
+            table,
+        } => {
+            let account_id = resolve_account_id(account_id, None)?;
+            handle_d1_schema(client, &account_id, &database_id, table.as_deref()).await
+        }
         D1Command::Export {
             account_id,
             database_id,
@@ -603,6 +611,107 @@ async fn handle_d1_command(
             Ok(())
         }
     }
+}
+
+async fn handle_d1_schema(
+    client: &client::CloudflareClient,
+    account_id: &str,
+    database_id: &str,
+    table: Option<&str>,
+) -> Result<()> {
+    // Resolve database name to ID if needed
+    let db_id = resolve_d1_database_id(client, account_id, database_id).await?;
+
+    if let Some(table_name) = table {
+        // Show schema for specific table
+        println!("\nSchema for table: {}\n", table_name);
+
+        // Get column info
+        let sql = format!("PRAGMA table_info({})", table_name);
+        let query_results = ops::d1::query_database(client, account_id, &db_id, &sql, None).await?;
+
+        println!("Columns:");
+        if let Some(result) = query_results.first() {
+            for row in &result.results {
+                let name = row.get("name").and_then(|v| v.as_str()).unwrap_or("");
+                let col_type = row.get("type").and_then(|v| v.as_str()).unwrap_or("");
+                let notnull = row.get("notnull").and_then(|v| v.as_i64()).unwrap_or(0);
+                let pk = row.get("pk").and_then(|v| v.as_i64()).unwrap_or(0);
+                let dflt = row.get("dflt_value").and_then(|v| v.as_str()).unwrap_or("NULL");
+
+                let mut attrs = Vec::new();
+                if pk == 1 { attrs.push("PRIMARY KEY"); }
+                if notnull == 1 { attrs.push("NOT NULL"); }
+
+                let attrs_str = if attrs.is_empty() { String::new() } else { format!(" ({})", attrs.join(", ")) };
+                println!("  {} {}{} [default: {}]", name, col_type, attrs_str, dflt);
+            }
+        }
+
+        // Get indexes for this table
+        let sql = format!(
+            "SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='{}'",
+            table_name
+        );
+        let index_results = ops::d1::query_database(client, account_id, &db_id, &sql, None).await?;
+
+        if let Some(result) = index_results.first() {
+            if !result.results.is_empty() {
+                println!("\nIndexes:");
+                for idx in &result.results {
+                    let name = idx.get("name").and_then(|v| v.as_str()).unwrap_or("");
+                    let sql = idx.get("sql").and_then(|v| v.as_str()).unwrap_or("");
+                    if !sql.is_empty() {
+                        println!("  {} - {}", name, sql);
+                    }
+                }
+            }
+        }
+    } else {
+        // Show all tables
+        let sql = "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name";
+        let query_results = ops::d1::query_database(client, account_id, &db_id, sql, None).await?;
+
+        let empty_vec = vec![];
+        let results = query_results.first().map(|r| &r.results).unwrap_or(&empty_vec);
+
+        if results.is_empty() {
+            println!("\nNo tables found in database.");
+            return Ok(());
+        }
+
+        println!("\nDatabase Schema:\n");
+        for table in results {
+            let name = table.get("name").and_then(|v| v.as_str()).unwrap_or("");
+            let sql = table.get("sql").and_then(|v| v.as_str()).unwrap_or("");
+            println!("{}:", name);
+            println!("  {}\n", sql);
+        }
+    }
+
+    Ok(())
+}
+
+/// Resolve a database identifier (name or ID) to a database ID
+async fn resolve_d1_database_id(
+    client: &client::CloudflareClient,
+    account_id: &str,
+    identifier: &str,
+) -> Result<String> {
+    // If it looks like a UUID, use it directly
+    if identifier.contains('-') && identifier.len() == 36 {
+        return Ok(identifier.to_string());
+    }
+
+    // Otherwise, look up by name
+    let databases = ops::d1::list_databases(client, account_id).await?;
+    for db in databases {
+        if db.name == identifier || db.uuid == identifier {
+            return Ok(db.uuid);
+        }
+    }
+
+    Err(crate::error::CfadError::not_found("D1 database", identifier))
 }
 
 async fn handle_r2_command(

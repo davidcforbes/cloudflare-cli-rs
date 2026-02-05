@@ -78,6 +78,19 @@ pub enum D1Command {
         raw: bool,
     },
 
+    /// Show database schema (tables, columns, indexes)
+    Schema {
+        /// Account ID (uses CLOUDFLARE_ACCOUNT_ID env var or config if not provided)
+        #[arg(long)]
+        account_id: Option<String>,
+
+        /// Database ID
+        database_id: String,
+
+        /// Specific table name (optional, shows all tables if not provided)
+        table: Option<String>,
+    },
+
     /// Execute SQL from a file
     #[command(name = "query-file")]
     QueryFile {
