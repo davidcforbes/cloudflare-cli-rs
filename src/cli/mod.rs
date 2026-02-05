@@ -16,30 +16,31 @@ pub mod zone;
     long_about = "A fast, type-safe Rust CLI for managing Cloudflare DNS, zones, cache, firewall rules, and analytics"
 )]
 pub struct Cli {
+    /// Configuration profile to use
     #[arg(long, global = true)]
     pub profile: Option<String>,
 
+    /// Cloudflare API token (overrides config/env)
     #[arg(long, global = true)]
     pub api_token: Option<String>,
 
+    /// Cloudflare API key (requires --api-email)
     #[arg(long, global = true)]
     pub api_key: Option<String>,
 
+    /// Cloudflare account email (used with --api-key)
     #[arg(long, global = true)]
     pub api_email: Option<String>,
 
-    #[arg(
-        short,
-        long,
-        global = true,
-        default_value = "table",
-        value_parser = ["table", "json", "csv"]
-    )]
+    /// Output format [default: table] [possible: table, json, csv]
+    #[arg(short, long, global = true, default_value = "table", value_parser = ["table", "json", "csv"], hide_default_value = true, hide_possible_values = true)]
     pub format: String,
 
+    /// Suppress non-error output
     #[arg(short, long, global = true)]
     pub quiet: bool,
 
+    /// Enable debug output
     #[arg(short, long, global = true)]
     pub verbose: bool,
 
