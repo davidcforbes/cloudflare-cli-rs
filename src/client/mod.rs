@@ -46,6 +46,7 @@ pub struct ResultInfo {
     pub per_page: u32,
     pub count: u32,
     pub total_count: u32,
+    #[serde(default)]
     pub total_pages: u32,
 }
 
