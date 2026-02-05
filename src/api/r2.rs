@@ -1,5 +1,12 @@
 use serde::{Deserialize, Serialize};
 
+/// Wrapper for R2 bucket list response (API returns {"buckets": [...]})
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct R2BucketList {
+    /// List of buckets
+    pub buckets: Vec<R2Bucket>,
+}
+
 /// R2 Bucket representation from Cloudflare API
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct R2Bucket {

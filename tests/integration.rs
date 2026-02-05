@@ -8,5 +8,6 @@ mod integration {
     mod dns_import_tests;
     mod dns_tests;
     mod error_tests;
+    mod r2_tests;
     mod zone_tests;
 }

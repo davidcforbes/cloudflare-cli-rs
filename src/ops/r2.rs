@@ -1,6 +1,6 @@
 use crate::api::r2::{
     CreateR2Bucket, CreateR2CustomDomain, CreateR2EventNotification, CreateR2MigrationJob,
-    CreateR2SippyConfig, CreateR2TempCredentials, R2Bucket, R2CorsConfig, R2CorsRule,
+    CreateR2SippyConfig, CreateR2TempCredentials, R2Bucket, R2BucketList, R2CorsConfig, R2CorsRule,
     R2CustomDomain, R2EventNotification, R2LifecycleConfig, R2LockConfig, R2ManagedDomain,
     R2Metrics, R2MigrationJob, R2MigrationProgress, R2SippyConfig, R2TempCredentials,
     UpdateR2Bucket, UpdateR2CustomDomain, UpdateR2LockConfig, UpdateR2ManagedDomain,
@@ -15,8 +15,9 @@ use crate::error::Result;
 /// List all R2 buckets for an account
 pub async fn list_buckets(client: &CloudflareClient, account_id: &str) -> Result<Vec<R2Bucket>> {
     let endpoint = format!("/accounts/{}/r2/buckets", account_id);
-    let response: CfResponse<Vec<R2Bucket>> = client.get(&endpoint).await?;
-    Ok(response.result.unwrap_or_default())
+    // R2 API returns {"result": {"buckets": [...]}} not {"result": [...]}
+    let response: CfResponse<R2BucketList> = client.get(&endpoint).await?;
+    Ok(response.result.map(|r| r.buckets).unwrap_or_default())
 }
 
 /// Get a specific R2 bucket by name
