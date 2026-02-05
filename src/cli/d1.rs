@@ -1,6 +1,27 @@
 use clap::Subcommand;
 
 #[derive(Subcommand)]
+#[command(after_long_help = r#"CREATING INDEXES:
+  D1 supports SQLite indexes via the query command:
+
+  Create an index:
+    cfad d1 query <database> "CREATE INDEX idx_name ON table(column)"
+
+  Create a unique index:
+    cfad d1 query <database> "CREATE UNIQUE INDEX idx_name ON table(column)"
+
+  Create a composite index:
+    cfad d1 query <database> "CREATE INDEX idx_name ON table(col1, col2)"
+
+  List indexes:
+    cfad d1 query <database> "SELECT name, sql FROM sqlite_master WHERE type='index'"
+
+  Drop an index:
+    cfad d1 query <database> "DROP INDEX idx_name"
+
+NOTE: D1 is based on SQLite. Stored procedures are not supported, but triggers are:
+    cfad d1 query <database> "CREATE TRIGGER ... AFTER INSERT ON table ..."
+"#)]
 pub enum D1Command {
     /// List all D1 databases
     List {
