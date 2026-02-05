@@ -464,7 +464,8 @@ async fn handle_d1_command(
             database_id,
         } => {
             let account_id = resolve_account_id(account_id, None)?;
-            let db = ops::d1::get_database(client, &account_id, &database_id).await?;
+            let db_id = resolve_d1_database_id(client, &account_id, &database_id).await?;
+            let db = ops::d1::get_database(client, &account_id, &db_id).await?;
             output::table::print_d1_database(&db);
             Ok(())
         }
@@ -487,8 +488,9 @@ async fn handle_d1_command(
             name,
         } => {
             let account_id = resolve_account_id(account_id, None)?;
+            let db_id = resolve_d1_database_id(client, &account_id, &database_id).await?;
             let update = api::d1::UpdateD1Database { name };
-            ops::d1::update_database(client, &account_id, &database_id, update).await?;
+            ops::d1::update_database(client, &account_id, &db_id, update).await?;
             Ok(())
         }
         D1Command::Delete {
@@ -497,11 +499,12 @@ async fn handle_d1_command(
             confirm,
         } => {
             let account_id = resolve_account_id(account_id, None)?;
+            let db_id = resolve_d1_database_id(client, &account_id, &database_id).await?;
             if !confirm {
                 println!("⚠ Deletion requires --confirm flag");
                 return Err(crate::error::CfadError::validation("Confirmation required"));
             }
-            ops::d1::delete_database(client, &account_id, &database_id).await
+            ops::d1::delete_database(client, &account_id, &db_id).await
         }
         D1Command::Query {
             account_id,
@@ -510,14 +513,14 @@ async fn handle_d1_command(
             raw,
         } => {
             let account_id = resolve_account_id(account_id, None)?;
+            let db_id = resolve_d1_database_id(client, &account_id, &database_id).await?;
             if raw {
                 let results =
-                    ops::d1::query_database_raw(client, &account_id, &database_id, &sql, None)
-                        .await?;
+                    ops::d1::query_database_raw(client, &account_id, &db_id, &sql, None).await?;
                 println!("{}", serde_json::to_string_pretty(&results)?);
             } else {
                 let results =
-                    ops::d1::query_database(client, &account_id, &database_id, &sql, None).await?;
+                    ops::d1::query_database(client, &account_id, &db_id, &sql, None).await?;
                 println!("{}", serde_json::to_string_pretty(&results)?);
             }
             Ok(())
@@ -529,15 +532,15 @@ async fn handle_d1_command(
             raw,
         } => {
             let account_id = resolve_account_id(account_id, None)?;
+            let db_id = resolve_d1_database_id(client, &account_id, &database_id).await?;
             let sql = std::fs::read_to_string(&file)?;
             if raw {
                 let results =
-                    ops::d1::query_database_raw(client, &account_id, &database_id, &sql, None)
-                        .await?;
+                    ops::d1::query_database_raw(client, &account_id, &db_id, &sql, None).await?;
                 println!("{}", serde_json::to_string_pretty(&results)?);
             } else {
                 let results =
-                    ops::d1::query_database(client, &account_id, &database_id, &sql, None).await?;
+                    ops::d1::query_database(client, &account_id, &db_id, &sql, None).await?;
                 println!("{}", serde_json::to_string_pretty(&results)?);
             }
             Ok(())
@@ -555,7 +558,8 @@ async fn handle_d1_command(
             database_id,
         } => {
             let account_id = resolve_account_id(account_id, None)?;
-            let result = ops::d1::export_database(client, &account_id, &database_id).await?;
+            let db_id = resolve_d1_database_id(client, &account_id, &database_id).await?;
+            let result = ops::d1::export_database(client, &account_id, &db_id).await?;
             println!("\nExport initiated:");
             println!("  Task ID: {}", result.task_id);
             println!("  Status: {}", result.status);
@@ -570,8 +574,9 @@ async fn handle_d1_command(
             file,
         } => {
             let account_id = resolve_account_id(account_id, None)?;
+            let db_id = resolve_d1_database_id(client, &account_id, &database_id).await?;
             let sql = std::fs::read_to_string(&file)?;
-            ops::d1::import_database(client, &account_id, &database_id, &sql).await?;
+            ops::d1::import_database(client, &account_id, &db_id, &sql).await?;
             Ok(())
         }
         D1Command::Bookmark {
@@ -580,9 +585,9 @@ async fn handle_d1_command(
             timestamp,
         } => {
             let account_id = resolve_account_id(account_id, None)?;
+            let db_id = resolve_d1_database_id(client, &account_id, &database_id).await?;
             let bookmark =
-                ops::d1::get_bookmark(client, &account_id, &database_id, timestamp.as_deref())
-                    .await?;
+                ops::d1::get_bookmark(client, &account_id, &db_id, timestamp.as_deref()).await?;
             println!("\nBookmark:");
             println!("  ID: {}", bookmark.bookmark);
             println!("  Timestamp: {}", bookmark.timestamp);
@@ -596,6 +601,7 @@ async fn handle_d1_command(
             confirm,
         } => {
             let account_id = resolve_account_id(account_id, None)?;
+            let db_id = resolve_d1_database_id(client, &account_id, &database_id).await?;
             if !confirm {
                 println!("⚠ Restore requires --confirm flag");
                 return Err(crate::error::CfadError::validation("Confirmation required"));
@@ -603,7 +609,7 @@ async fn handle_d1_command(
             ops::d1::restore_database(
                 client,
                 &account_id,
-                &database_id,
+                &db_id,
                 bookmark.as_deref(),
                 timestamp.as_deref(),
             )
