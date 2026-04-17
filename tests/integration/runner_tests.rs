@@ -2353,3 +2353,74 @@ async fn test_handle_profile_list_returns_ok() {
     let res = runner::handle_profile_list().await;
     assert!(res.is_ok());
 }
+
+// ------------------ r2 op error branches: missing result errors ------------------
+
+#[tokio::test]
+async fn test_r2_create_notification_missing_result_errors() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path(
+            "/accounts/acc1/event_notifications/r2/b1/configuration/queues/q1",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": null
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    use cfad::api::r2::CreateR2EventNotification;
+    let req = CreateR2EventNotification {
+        events: vec!["object:create".to_string()],
+        prefix: None,
+        suffix: None,
+    };
+    let res = cfad::ops::r2::create_notification(&client, "acc1", "b1", "q1", req).await;
+    assert!(res.is_err());
+}
+
+#[tokio::test]
+async fn test_r2_create_migration_job_missing_result_errors() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/accounts/acc1/slurper/jobs"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": null
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    use cfad::api::r2::CreateR2MigrationJob;
+    let req = CreateR2MigrationJob {
+        source_provider: "aws".into(),
+        source_bucket: "src".into(),
+        source_region: None,
+        target_bucket: "dst".into(),
+        access_key_id: "AK".into(),
+        secret_access_key: "SK".into(),
+    };
+    let res = cfad::ops::r2::create_migration_job(&client, "acc1", req).await;
+    assert!(res.is_err());
+}
+
+#[tokio::test]
+async fn test_r2_create_temp_credentials_missing_result_errors() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/accounts/acc1/r2/temp-access-credentials"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": null
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    use cfad::api::r2::CreateR2TempCredentials;
+    let req = CreateR2TempCredentials {
+        bucket: "b".into(),
+        permission: "read".into(),
+        prefix: None,
+        ttl_seconds: 3600,
+    };
+    let res = cfad::ops::r2::create_temp_credentials(&client, "acc1", req).await;
+    assert!(res.is_err());
+}
