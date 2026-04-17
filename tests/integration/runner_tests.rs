@@ -701,3 +701,385 @@ async fn test_handle_cache_purge_files_dispatches() {
     };
     assert!(runner::handle_cache_command(&client, cmd).await.is_ok());
 }
+
+#[tokio::test]
+async fn test_handle_cache_purge_tags_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": [zone_body()]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/zones/zone123abc/purge_cache"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": {"id": "zone123abc"}
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::cache::CacheCommand::Purge {
+        zone: "example.com".to_string(),
+        all: false,
+        files: None,
+        tags: Some(vec!["tag1".to_string()]),
+        hosts: None,
+        prefixes: None,
+    };
+    assert!(runner::handle_cache_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_cache_purge_hosts_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": [zone_body()]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/zones/zone123abc/purge_cache"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": {"id": "zone123abc"}
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::cache::CacheCommand::Purge {
+        zone: "example.com".to_string(),
+        all: false,
+        files: None,
+        tags: None,
+        hosts: Some(vec!["example.com".to_string()]),
+        prefixes: None,
+    };
+    assert!(runner::handle_cache_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_cache_purge_prefixes_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": [zone_body()]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/zones/zone123abc/purge_cache"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": {"id": "zone123abc"}
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::cache::CacheCommand::Purge {
+        zone: "example.com".to_string(),
+        all: false,
+        files: None,
+        tags: None,
+        hosts: None,
+        prefixes: Some(vec!["/api/".to_string()]),
+    };
+    assert!(runner::handle_cache_command(&client, cmd).await.is_ok());
+}
+
+// ------------------ D1 extended handler coverage ------------------
+
+#[tokio::test]
+async fn test_handle_d1_update_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/accounts/acc1/d1/database"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": [d1_db_body("db-1", "my-db")]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("PUT"))
+        .and(path("/accounts/acc1/d1/database/db-1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": d1_db_body("db-1", "renamed")
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::d1::D1Command::Update {
+        account_id: Some("acc1".to_string()),
+        database_id: "db-1".to_string(),
+        name: Some("renamed".to_string()),
+    };
+    assert!(runner::handle_d1_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_d1_delete_confirmed_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/accounts/acc1/d1/database"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": [d1_db_body("db-1", "my-db")]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("DELETE"))
+        .and(path("/accounts/acc1/d1/database/db-1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": null
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::d1::D1Command::Delete {
+        account_id: Some("acc1".to_string()),
+        database_id: "db-1".to_string(),
+        confirm: true,
+    };
+    assert!(runner::handle_d1_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_d1_query_raw_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/accounts/acc1/d1/database"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": [d1_db_body("db-1", "my-db")]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/accounts/acc1/d1/database/db-1/raw"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [{ "success": true, "columns": [], "rows": [], "meta": {} }]
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::d1::D1Command::Query {
+        account_id: Some("acc1".to_string()),
+        database_id: "db-1".to_string(),
+        sql: "SELECT 1".to_string(),
+        raw: true,
+        format: "table".to_string(),
+    };
+    assert!(runner::handle_d1_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_d1_query_json_format_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/accounts/acc1/d1/database"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": [d1_db_body("db-1", "my-db")]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/accounts/acc1/d1/database/db-1/query"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [{ "success": true, "results": [], "meta": {} }]
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::d1::D1Command::Query {
+        account_id: Some("acc1".to_string()),
+        database_id: "db-1".to_string(),
+        sql: "SELECT 1".to_string(),
+        raw: false,
+        format: "json".to_string(),
+    };
+    assert!(runner::handle_d1_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_d1_bookmark_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/accounts/acc1/d1/database"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": [d1_db_body("db-1", "my-db")]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/accounts/acc1/d1/database/db-1/time_travel/bookmark"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": { "bookmark": "bk-1", "timestamp": "2026-01-01T00:00:00Z" }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::d1::D1Command::Bookmark {
+        account_id: Some("acc1".to_string()),
+        database_id: "db-1".to_string(),
+        timestamp: None,
+    };
+    assert!(runner::handle_d1_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_d1_restore_requires_confirm() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/accounts/acc1/d1/database"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": [d1_db_body("db-1", "my-db")]
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::d1::D1Command::Restore {
+        account_id: Some("acc1".to_string()),
+        database_id: "db-1".to_string(),
+        bookmark: Some("bk1".to_string()),
+        timestamp: None,
+        confirm: false,
+    };
+    assert!(runner::handle_d1_command(&client, cmd).await.is_err());
+}
+
+#[tokio::test]
+async fn test_handle_d1_export_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/accounts/acc1/d1/database"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": [d1_db_body("db-1", "my-db")]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/accounts/acc1/d1/database/db-1/export"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": { "task_id": "t1", "status": "processing", "signed_url": null }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::d1::D1Command::Export {
+        account_id: Some("acc1".to_string()),
+        database_id: "db-1".to_string(),
+    };
+    assert!(runner::handle_d1_command(&client, cmd).await.is_ok());
+}
+
+// ------------------ R2 sub-command handler coverage ------------------
+
+#[tokio::test]
+async fn test_handle_r2_show_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/accounts/acc1/r2/buckets/b1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": { "name": "b1", "creation_date": "2026-01-01T00:00:00Z" }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::r2::R2Command::Show {
+        account_id: Some("acc1".to_string()),
+        bucket: "b1".to_string(),
+    };
+    assert!(runner::handle_r2_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_r2_create_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/accounts/acc1/r2/buckets"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": { "name": "b1", "creation_date": "2026-01-01T00:00:00Z" }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::r2::R2Command::Create {
+        account_id: Some("acc1".to_string()),
+        name: "b1".to_string(),
+        location: None,
+        storage_class: None,
+    };
+    assert!(runner::handle_r2_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_r2_delete_requires_confirm() {
+    let mock_server = MockServer::start().await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::r2::R2Command::Delete {
+        account_id: Some("acc1".to_string()),
+        bucket: "b1".to_string(),
+        confirm: false,
+    };
+    assert!(runner::handle_r2_command(&client, cmd).await.is_err());
+}
+
+#[tokio::test]
+async fn test_handle_r2_metrics_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/accounts/acc1/r2/metrics"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": { "buckets": [] }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::r2::R2Command::Metrics {
+        account_id: Some("acc1".to_string()),
+    };
+    assert!(runner::handle_r2_command(&client, cmd).await.is_ok());
+}
+
+// ------------------ Pages sub-command handler coverage ------------------
+
+#[tokio::test]
+async fn test_handle_pages_show_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/accounts/acc1/pages/projects/p1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": {
+                "id": "p1", "name": "p1", "subdomain": "p1.pages.dev",
+                "domains": [], "created_on": "2026-01-01T00:00:00Z",
+                "production_branch": "main"
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::pages::PagesCommand::Show {
+        account_id: Some("acc1".to_string()),
+        project: "p1".to_string(),
+    };
+    assert!(runner::handle_pages_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_pages_delete_requires_confirm() {
+    let mock_server = MockServer::start().await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::pages::PagesCommand::Delete {
+        account_id: Some("acc1".to_string()),
+        project: "p1".to_string(),
+        confirm: false,
+    };
+    assert!(runner::handle_pages_command(&client, cmd).await.is_err());
+}
