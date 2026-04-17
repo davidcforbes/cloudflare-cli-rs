@@ -261,6 +261,63 @@ fn test_client_new_default_url() {
 }
 
 #[tokio::test]
+async fn test_client_auth_hint_on_401_token() {
+    // Triggers the auth-hint branch in client::request: 401 + body mentioning "authenticate"
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/test"))
+        .respond_with(ResponseTemplate::new(401).set_body_string(
+            r#"{"success":false,"errors":[{"code":10001,"message":"authenticate"}]}"#,
+        ))
+        .mount(&mock_server)
+        .await;
+
+    let auth = AuthMethod::ApiToken("bad_token".to_string());
+    let client = CloudflareClient::new_with_base_url(auth, mock_server.uri()).unwrap();
+    let result: Result<cfad::client::CfResponse<serde_json::Value>, _> = client.get("/test").await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_client_auth_hint_on_403_keyemail() {
+    // Triggers the auth-hint branch for ApiKeyEmail auth method
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/test"))
+        .respond_with(ResponseTemplate::new(403).set_body_string(
+            r#"{"success":false,"errors":[{"code":6111,"message":"Authorization failed"}]}"#,
+        ))
+        .mount(&mock_server)
+        .await;
+
+    let auth = AuthMethod::ApiKeyEmail {
+        key: "abc123".to_string(),
+        email: "user@example.com".to_string(),
+    };
+    let client = CloudflareClient::new_with_base_url(auth, mock_server.uri()).unwrap();
+    let result: Result<cfad::client::CfResponse<serde_json::Value>, _> = client.get("/test").await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_client_non_auth_error_no_hint() {
+    // 500 without auth markers does not trigger the hint branch
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/test"))
+        .respond_with(ResponseTemplate::new(500).set_body_string(
+            r#"{"success":false,"errors":[{"code":9999,"message":"server exploded"}]}"#,
+        ))
+        .mount(&mock_server)
+        .await;
+
+    let auth = AuthMethod::ApiToken("token".to_string());
+    let client = CloudflareClient::new_with_base_url(auth, mock_server.uri()).unwrap();
+    let result: Result<cfad::client::CfResponse<serde_json::Value>, _> = client.get("/test").await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
 async fn test_client_invalid_json_response() {
     let mock_server = MockServer::start().await;
 

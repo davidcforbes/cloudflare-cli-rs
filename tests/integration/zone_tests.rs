@@ -347,6 +347,51 @@ async fn test_update_zone_settings_ipv6() {
 }
 
 #[tokio::test]
+async fn test_get_zone_settings_returns_list() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/zones/zone123/settings"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true,
+            "result": [
+                {"id": "ssl", "value": "flexible", "editable": true, "modified_on": null},
+                {"id": "security_level", "value": "high", "editable": true, "modified_on": null},
+            ],
+            "errors": [],
+            "messages": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = create_test_client(&mock_server).await;
+    let settings = zone::get_zone_settings(&client, "zone123").await.unwrap();
+    assert_eq!(settings.len(), 2);
+    assert_eq!(settings[0].id, "ssl");
+    assert_eq!(settings[1].id, "security_level");
+}
+
+#[tokio::test]
+async fn test_get_zone_settings_empty_result() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/zones/zone123/settings"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true,
+            "result": null,
+            "errors": [],
+            "messages": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = create_test_client(&mock_server).await;
+    let settings = zone::get_zone_settings(&client, "zone123").await.unwrap();
+    assert!(settings.is_empty());
+}
+
+#[tokio::test]
 async fn test_update_zone_settings_always_https() {
     let mock_server = MockServer::start().await;
 

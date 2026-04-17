@@ -1055,4 +1055,293 @@ mod tests {
         }];
         print_zones(&zones);
     }
+
+    // -------------- table coverage: high-volume tests using JSON deserialization --------------
+    // These tests exercise all print_* functions against representative input shapes.
+    // Goal is to ensure each branch executes at least once (non-empty vs empty, proxied
+    // vs not, priority present vs absent, nullable fields present vs absent, etc.).
+    use crate::api::d1::{D1Database, D1QueryResult, D1RawQueryResult};
+    use crate::api::r2::{
+        R2Bucket, R2CustomDomain, R2EventNotification, R2Metrics, R2MigrationJob,
+    };
+    use crate::api::token::{PermissionGroup, Token};
+    use serde_json::json;
+
+    fn de<T: serde::de::DeserializeOwned>(v: serde_json::Value) -> T {
+        serde_json::from_value(v).expect("test fixture deserialization failed")
+    }
+
+    #[test]
+    fn test_format_json_value_variants() {
+        // format_json_value is called from print_d1_query_results/print_d1_raw_query_results
+        // Exercise via a query result with mixed value types
+        let result: D1QueryResult = de(json!({
+            "results": [{
+                "str_col": "hello",
+                "num_col": 42,
+                "float_col": 1.5,
+                "bool_col": true,
+                "null_col": null,
+                "arr_col": [1, 2, 3],
+                "obj_col": {"k": "v"},
+            }],
+            "success": true,
+            "meta": {},
+        }));
+        print_d1_query_results(&[result]);
+    }
+
+    #[test]
+    fn test_print_d1_databases_empty_and_populated() {
+        print_d1_databases(&[]);
+        let db: D1Database = de(json!({
+            "uuid": "db-uuid-1",
+            "name": "my-db",
+            "version": "alpha",
+            "num_tables": 3,
+            "file_size": 1024,
+            "created_at": "2026-01-01T00:00:00Z",
+        }));
+        print_d1_database(&db);
+        print_d1_databases(&[db]);
+    }
+
+    #[test]
+    fn test_print_d1_query_results_variants() {
+        print_d1_query_results(&[]);
+        let empty_result: D1QueryResult = de(json!({
+            "results": [],
+            "success": true,
+            "meta": {},
+        }));
+        print_d1_query_results(&[empty_result]);
+    }
+
+    #[test]
+    fn test_print_d1_raw_query_results_variants() {
+        print_d1_raw_query_results(&[]);
+        let empty: D1RawQueryResult = de(json!({
+            "columns": [],
+            "rows": [],
+            "success": true,
+            "meta": {},
+        }));
+        print_d1_raw_query_results(&[empty]);
+        let populated: D1RawQueryResult = de(json!({
+            "columns": ["id", "name", "active"],
+            "rows": [
+                [1, "alpha", true],
+                [2, null, false],
+            ],
+            "success": true,
+            "meta": {"duration": 0.1, "rows_read": 2, "rows_written": 0, "last_row_id": 0, "changes": 0, "size_after": 0, "served_by_cache": false},
+        }));
+        print_d1_raw_query_results(&[populated]);
+    }
+
+    #[test]
+    fn test_print_r2_buckets_variants() {
+        print_r2_buckets(&[]);
+        let b: R2Bucket = de(json!({
+            "name": "my-bucket",
+            "creation_date": "2026-01-01T00:00:00Z",
+            "location": "wnam",
+            "storage_class": "Standard",
+        }));
+        print_r2_bucket(&b);
+        let b2: R2Bucket = de(json!({ "name": "no-loc", "creation_date": "2026-02-02T00:00:00Z" }));
+        print_r2_bucket(&b2);
+        print_r2_buckets(&[b, b2]);
+    }
+
+    #[test]
+    fn test_print_r2_custom_domains_variants() {
+        print_r2_custom_domains(&[]);
+        let d: R2CustomDomain = de(json!({
+            "domain": "cdn.example.com",
+            "enabled": true,
+            "status": "active",
+            "minTLS": "1.2",
+            "zoneId": "zone123",
+            "zoneName": "example.com",
+        }));
+        let d2: R2CustomDomain =
+            de(json!({ "domain": "other.example.com", "enabled": false, "status": "pending" }));
+        print_r2_custom_domains(&[d, d2]);
+    }
+
+    #[test]
+    fn test_print_r2_metrics_variants() {
+        let m: R2Metrics = de(json!({ "buckets": [] }));
+        print_r2_metrics(&m);
+        let m2: R2Metrics = de(json!({
+            "buckets": [{
+                "name": "b1",
+                "payloadSize": 12345678,
+                "objectCount": 100,
+                "uploadCount": 50,
+                "infrequentAccessPayloadSize": 500,
+                "infrequentAccessObjectCount": 5,
+            }],
+        }));
+        print_r2_metrics(&m2);
+    }
+
+    #[test]
+    fn test_print_r2_notifications_variants() {
+        print_r2_notifications(&[]);
+        let n: R2EventNotification = de(json!({
+            "queueId": "q1",
+            "rules": [{ "actions": ["PutObject"], "prefix": "logs/", "suffix": ".json" }],
+        }));
+        print_r2_notifications(&[n]);
+    }
+
+    #[test]
+    fn test_print_r2_migration_jobs_variants() {
+        print_r2_migration_jobs(&[]);
+        let j: R2MigrationJob = de(json!({
+            "id": "job-1",
+            "status": "running",
+            "source": { "provider": "aws-s3", "bucket": "src-bucket", "region": "us-east-1" },
+            "destinationBucket": "dst-bucket",
+            "filesMigrated": 10,
+            "bytesMigrated": 2048,
+            "filesSkipped": 1,
+            "filesFailed": 0,
+            "createdAt": "2026-01-01T00:00:00Z",
+        }));
+        print_r2_migration_jobs(&[j]);
+    }
+
+    #[test]
+    fn test_format_bytes_covers_all_units() {
+        // format_bytes is private; call via print_r2_metrics which uses it
+        let metrics: R2Metrics = de(json!({
+            "buckets": [
+                { "name": "b1", "payloadSize": 512, "objectCount": 1, "uploadCount": 0, "infrequentAccessPayloadSize": 0, "infrequentAccessObjectCount": 0 },
+                { "name": "b2", "payloadSize": 2_048, "objectCount": 1, "uploadCount": 0, "infrequentAccessPayloadSize": 0, "infrequentAccessObjectCount": 0 },
+                { "name": "b3", "payloadSize": 5_242_880, "objectCount": 1, "uploadCount": 0, "infrequentAccessPayloadSize": 0, "infrequentAccessObjectCount": 0 },
+                { "name": "b4", "payloadSize": 5_368_709_120u64, "objectCount": 1, "uploadCount": 0, "infrequentAccessPayloadSize": 0, "infrequentAccessObjectCount": 0 },
+                { "name": "b5", "payloadSize": 5_497_558_138_880u64, "objectCount": 1, "uploadCount": 0, "infrequentAccessPayloadSize": 0, "infrequentAccessObjectCount": 0 },
+            ],
+        }));
+        print_r2_metrics(&metrics);
+    }
+
+    #[test]
+    fn test_print_tokens_variants() {
+        print_tokens(&[]);
+        let t: Token = de(json!({
+            "id": "tok1",
+            "name": "Read-only Token",
+            "status": "active",
+            "issued_on": "2026-01-01T00:00:00Z",
+            "modified_on": "2026-01-02T00:00:00Z",
+            "not_before": "2026-01-01T00:00:00Z",
+            "expires_on": "2027-01-01T00:00:00Z",
+            "policies": [{
+                "id": "p1",
+                "effect": "allow",
+                "resources": {"zone1": "*"},
+                "permission_groups": [{"id": "pg1", "name": "Zone Read"}],
+            }],
+            "condition": { "request_ip": { "in": ["10.0.0.0/8"], "not_in": [] } },
+        }));
+        print_token(&t);
+        let t2: Token = de(json!({ "id": "tok2", "name": "Minimal", "status": "disabled" }));
+        print_tokens(&[t, t2]);
+    }
+
+    #[test]
+    fn test_print_permission_groups_variants() {
+        print_permission_groups(&[], None);
+        let g: PermissionGroup = de(json!({
+            "id": "pg1",
+            "name": "Zone Read",
+            "description": "read zones",
+            "scopes": ["com.cloudflare.api.account.zone"],
+        }));
+        let g2: PermissionGroup = de(json!({
+            "id": "pg2",
+            "name": "Account Read",
+            "scopes": ["com.cloudflare.api.account"],
+        }));
+        print_permission_groups(&[g.clone(), g2.clone()], None);
+        print_permission_groups(&[g, g2], Some("zone"));
+    }
+
+    // PagesProject, Deployment, and PagesDomain are more complex; construct via JSON.
+    use crate::api::pages::{Deployment, PagesDomain, PagesProject};
+
+    #[test]
+    fn test_print_pages_projects_variants() {
+        print_pages_projects(&[]);
+        let p: PagesProject = de(json!({
+            "id": "p1",
+            "name": "my-site",
+            "subdomain": "my-site.pages.dev",
+            "domains": ["example.com", "www.example.com"],
+            "created_on": "2026-01-01T00:00:00Z",
+            "production_branch": "main",
+            "source": {
+                "type": "github",
+                "config": { "owner": "me", "repo_name": "my-site", "production_branch": "main" },
+            },
+            "build_config": {
+                "build_command": "npm run build",
+                "destination_dir": "dist",
+                "root_dir": ".",
+            },
+            "deployment_configs": null,
+            "canonical_deployment": null,
+            "latest_deployment": null,
+        }));
+        print_pages_project(&p);
+        let p2: PagesProject = de(json!({
+            "id": "p2",
+            "name": "other",
+            "subdomain": "other.pages.dev",
+            "domains": [],
+            "created_on": "2026-01-02T00:00:00Z",
+            "production_branch": "main",
+        }));
+        print_pages_projects(&[p, p2]);
+    }
+
+    #[test]
+    fn test_print_deployments_variants() {
+        print_deployments(&[]);
+        let d: Deployment = de(json!({
+            "id": "d1",
+            "short_id": "abc1234",
+            "project_id": "p1",
+            "project_name": "my-site",
+            "environment": "production",
+            "url": "https://abc1234.my-site.pages.dev",
+            "created_on": "2026-01-01T00:00:00Z",
+            "modified_on": "2026-01-01T00:00:00Z",
+            "is_skipped": false,
+            "latest_stage": { "name": "deploy", "status": "success", "started_on": "2026-01-01T00:00:00Z", "ended_on": "2026-01-01T00:05:00Z" },
+            "deployment_trigger": { "type": "push", "metadata": { "branch": "main", "commit_hash": "abcdef1", "commit_message": "Update" } },
+        }));
+        print_deployment(&d);
+        print_deployments(&[d]);
+    }
+
+    #[test]
+    fn test_print_pages_domains_variants() {
+        print_pages_domains(&[]);
+        let d: PagesDomain = de(json!({
+            "id": "dm1",
+            "name": "custom.example.com",
+            "status": "active",
+            "verification_data": { "status": "active" },
+            "validation_data": { "status": "active" },
+            "certificate_authority": "lets_encrypt",
+            "created_on": "2026-01-01T00:00:00Z",
+        }));
+        print_pages_domain(&d);
+        print_pages_domains(&[d]);
+    }
 }

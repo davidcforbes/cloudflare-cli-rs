@@ -625,6 +625,38 @@ async fn test_get_bookmark_success() {
     assert_eq!(result.timestamp, "2026-02-04T10:30:00Z");
 }
 
+#[tokio::test]
+async fn test_get_bookmark_with_timestamp() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/accounts/acc123/d1/database/db-uuid-1/time_travel/bookmark",
+        ))
+        .and(wiremock::matchers::query_param(
+            "timestamp",
+            "2026-02-04T00:00:00Z",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true,
+            "result": {
+                "bookmark": "bk_at_timestamp",
+                "timestamp": "2026-02-04T00:00:00Z"
+            },
+            "errors": [],
+            "messages": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = create_test_client(&mock_server).await;
+    let result = d1::get_bookmark(&client, "acc123", "db-uuid-1", Some("2026-02-04T00:00:00Z"))
+        .await
+        .unwrap();
+
+    assert_eq!(result.bookmark, "bk_at_timestamp");
+}
+
 #[test]
 fn test_d1_bookmark_deserialization() {
     let json = r#"{

@@ -89,13 +89,7 @@ pub enum Commands {
 }
 
 pub fn setup_logging(verbose: bool, quiet: bool) {
-    let level = if verbose {
-        "debug"
-    } else if quiet {
-        "warn"
-    } else {
-        "info"
-    };
+    let level = log_level_for(verbose, quiet);
 
     env_logger::Builder::from_env(
         env_logger::Env::default().default_filter_or(format!("cfad={}", level)),
@@ -103,4 +97,43 @@ pub fn setup_logging(verbose: bool, quiet: bool) {
     .format_target(false)
     .format_timestamp(None)
     .init();
+}
+
+/// Resolve the log-level string that `setup_logging` would apply.
+/// Extracted so the decision logic is testable without touching the
+/// global `env_logger` singleton.
+pub fn log_level_for(verbose: bool, quiet: bool) -> &'static str {
+    if verbose {
+        "debug"
+    } else if quiet {
+        "warn"
+    } else {
+        "info"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_log_level_defaults_to_info() {
+        assert_eq!(log_level_for(false, false), "info");
+    }
+
+    #[test]
+    fn test_log_level_verbose_is_debug() {
+        assert_eq!(log_level_for(true, false), "debug");
+    }
+
+    #[test]
+    fn test_log_level_quiet_is_warn() {
+        assert_eq!(log_level_for(false, true), "warn");
+    }
+
+    #[test]
+    fn test_log_level_verbose_wins_over_quiet() {
+        // verbose takes precedence when both are set
+        assert_eq!(log_level_for(true, true), "debug");
+    }
 }
