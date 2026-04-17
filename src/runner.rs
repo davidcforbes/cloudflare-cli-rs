@@ -65,13 +65,13 @@ pub async fn run() -> Result<()> {
     Ok(())
 }
 
-fn print_help_json() {
+pub fn print_help_json() {
     let cmd = Cli::command();
     let help = build_command_json(&cmd);
     println!("{}", serde_json::to_string_pretty(&help).unwrap());
 }
 
-fn build_command_json(cmd: &clap::Command) -> serde_json::Value {
+pub fn build_command_json(cmd: &clap::Command) -> serde_json::Value {
     let mut options = Vec::new();
     for arg in cmd.get_arguments() {
         if arg.is_positional() {

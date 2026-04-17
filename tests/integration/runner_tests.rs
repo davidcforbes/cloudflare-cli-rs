@@ -1692,3 +1692,22 @@ async fn test_handle_pages_purge_cache_dispatches() {
     };
     assert!(runner::handle_pages_command(&client, cmd).await.is_ok());
 }
+
+// ------------------ print_help_json + build_command_json ------------------
+
+#[test]
+fn test_build_command_json_produces_structure() {
+    use clap::CommandFactory;
+    let cmd = cli::Cli::command();
+    let json = runner::build_command_json(&cmd);
+    assert!(json.get("name").is_some());
+    assert!(json.get("options").is_some());
+    assert!(json.get("subcommands").is_some());
+    let subs = json["subcommands"].as_array().unwrap();
+    assert!(subs.len() >= 7);
+}
+
+#[test]
+fn test_print_help_json_does_not_panic() {
+    runner::print_help_json();
+}
