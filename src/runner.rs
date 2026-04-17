@@ -325,7 +325,10 @@ pub async fn handle_zone_command(
     }
 }
 
-pub async fn handle_zone_list(client: &client::CloudflareClient, status: Option<String>) -> Result<()> {
+pub async fn handle_zone_list(
+    client: &client::CloudflareClient,
+    status: Option<String>,
+) -> Result<()> {
     let zones = ops::zone::list_zones(client, status.as_deref()).await?;
     println!("\nZones:\n");
     output::table::print_zones(&zones);
