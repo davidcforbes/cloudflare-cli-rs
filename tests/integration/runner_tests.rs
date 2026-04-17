@@ -2303,3 +2303,53 @@ async fn test_handle_r2_domain_update_dispatches() {
     });
     assert!(runner::handle_r2_command(&client, cmd).await.is_ok());
 }
+
+// ------------------ DNS Import, Zone Create without auth ------------------
+
+#[tokio::test]
+async fn test_handle_dns_import_dispatches() {
+    // Build a minimal CSV that import_records can parse.
+    let csv_contents = "type,name,content,ttl,proxied\n\
+                       A,www,203.0.113.1,3600,false\n";
+    let file = write_temp_file(csv_contents, "csv");
+
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [zone_body()]
+        })))
+        .mount(&mock_server)
+        .await;
+    // Stub create endpoint for every imported record
+    Mock::given(method("POST"))
+        .and(path("/zones/zone123abc/dns_records"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": dns_record_body()
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::dns::DnsCommand::Import {
+        zone: "example.com".to_string(),
+        file: file.to_string_lossy().into_owned(),
+    };
+    let _ = runner::handle_dns_command(&client, cmd).await;
+    let _ = std::fs::remove_file(file);
+}
+
+// ------------------ Config read-only handlers (safe to run) ------------------
+// These either require no config state to be modified, or use the user's
+// existing env/config read-only. We avoid init/add/set_default which would
+// mutate the user's real config file.
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_handle_profile_list_returns_ok() {
+    // Works whether or not a config file exists; returns Ok either way.
+    let res = runner::handle_profile_list().await;
+    assert!(res.is_ok());
+}
