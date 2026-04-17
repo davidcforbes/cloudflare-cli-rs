@@ -160,6 +160,22 @@ impl CloudflareClient {
 
         if !status.is_success() {
             let text = response.text().await.unwrap_or_default();
+
+            let is_auth_status =
+                matches!(status.as_u16(), 400 | 401 | 403);
+            let looks_like_auth_error = text.contains("authenticate")
+                || text.contains("Authorization")
+                || text.contains("6111")
+                || text.contains("10001");
+            if is_auth_status && looks_like_auth_error {
+                let auth_hint = match &self.auth {
+                    AuthMethod::ApiToken(_) => "Using API Token auth (Authorization: Bearer). Verify CLOUDFLARE_API_TOKEN is a valid API token, not a Global API Key.",
+                    AuthMethod::ApiKeyEmail { .. } => "Using API Key+Email auth (X-Auth-Key). Verify CLOUDFLARE_API_KEY and CLOUDFLARE_API_EMAIL are correct.",
+                };
+                log::error!("Authentication failed. {}", auth_hint);
+                eprintln!("Hint: {}", auth_hint);
+            }
+
             return Err(CfadError::Api {
                 status: status.as_u16(),
                 message: text,

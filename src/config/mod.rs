@@ -67,20 +67,64 @@ impl Profile {
     }
 
     pub fn auth_method(&self) -> Result<AuthMethod> {
-        // Check for non-empty token first
-        if let Some(token) = &self.api_token {
-            if !token.is_empty() {
-                return Ok(AuthMethod::ApiToken(token.clone()));
+        // Trim whitespace from all credential values
+        let api_token = self
+            .api_token
+            .as_ref()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+        let api_key = self
+            .api_key
+            .as_ref()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+        let api_email = self
+            .api_email
+            .as_ref()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        // Detect if credentials appear to be swapped:
+        // Global API Keys are hex strings, API Tokens contain mixed-case alphanumeric chars
+        if let (Some(ref token), Some(ref key)) = (&api_token, &api_key) {
+            let token_looks_like_global_key = token.chars().all(|c| c.is_ascii_hexdigit());
+            let key_looks_like_api_token =
+                key.len() >= 40 && key.chars().any(|c| c.is_ascii_uppercase());
+            if token_looks_like_global_key && key_looks_like_api_token {
+                log::warn!(
+                    "CLOUDFLARE_API_TOKEN looks like a Global API Key and CLOUDFLARE_API_KEY looks like an API Token — auto-correcting."
+                );
+                eprintln!(
+                    "Warning: CLOUDFLARE_API_TOKEN and CLOUDFLARE_API_KEY appear to be swapped. \
+                     Auto-correcting: using CLOUDFLARE_API_KEY value as the API Token. \
+                     Fix by swapping the values in your environment variables."
+                );
+                // Use the api_key value as the actual Bearer token since it looks like one
+                return Ok(AuthMethod::ApiToken(key.clone()));
             }
         }
-        // Fall back to key + email
-        if let (Some(key), Some(email)) = (&self.api_key, &self.api_email) {
-            if !key.is_empty() && !email.is_empty() {
-                return Ok(AuthMethod::ApiKeyEmail {
-                    key: key.clone(),
-                    email: email.clone(),
-                });
+
+        // Check for non-empty token first
+        if let Some(token) = api_token {
+            return Ok(AuthMethod::ApiToken(token));
+        }
+        // Fall back to key + email — but detect if CLOUDFLARE_API_KEY actually
+        // contains an API Token (mixed-case, 40+ chars) instead of a Global API Key
+        if let (Some(key), Some(email)) = (api_key, api_email) {
+            let key_looks_like_api_token =
+                key.len() >= 40 && key.chars().any(|c| c.is_ascii_uppercase());
+            if key_looks_like_api_token {
+                log::warn!(
+                    "CLOUDFLARE_API_KEY looks like an API Token, not a Global API Key — using it as Bearer token."
+                );
+                eprintln!(
+                    "Warning: CLOUDFLARE_API_KEY appears to contain an API Token (not a Global API Key). \
+                     Auto-correcting: using it as a Bearer token. \
+                     Fix by setting CLOUDFLARE_API_TOKEN instead."
+                );
+                return Ok(AuthMethod::ApiToken(key));
             }
+            return Ok(AuthMethod::ApiKeyEmail { key, email });
         }
         Err(CfadError::config(
             "No valid authentication method configured",
@@ -250,6 +294,7 @@ mod tests {
     #[test]
     fn test_profile_auth_method_token_takes_precedence() {
         // When both token and key+email are present, token should be used
+        // (when token doesn't look like a global key)
         let profile = Profile {
             api_token: Some("test_token".to_string()),
             api_key: Some("test_key".to_string()),
@@ -263,6 +308,71 @@ mod tests {
         match auth {
             AuthMethod::ApiToken(_) => {}
             _ => panic!("Expected ApiToken to take precedence"),
+        }
+    }
+
+    #[test]
+    fn test_profile_auth_method_detects_swapped_credentials() {
+        // When api_token looks like a Global API Key (hex) and api_key looks like an API Token,
+        // auth_method should auto-correct and use the api_key value as the Bearer token
+        let profile = Profile {
+            api_token: Some("df43054b547d354432a1d4dd1d847b016a051".to_string()),
+            api_key: Some("oV4DQ6Ql7s6hnSz6p0mKL80FkelLELRRCwCujKv0".to_string()),
+            api_email: Some("user@example.com".to_string()),
+            account_id: None,
+            default_zone: None,
+            output_format: None,
+        };
+
+        let auth = profile.auth_method().unwrap();
+        match auth {
+            AuthMethod::ApiToken(token) => {
+                // Should use the api_key value (the actual API token), not the api_token value
+                assert_eq!(token, "oV4DQ6Ql7s6hnSz6p0mKL80FkelLELRRCwCujKv0");
+            }
+            _ => panic!("Expected ApiToken variant with corrected value"),
+        }
+    }
+
+    #[test]
+    fn test_profile_auth_method_api_key_contains_api_token() {
+        // When CLOUDFLARE_API_TOKEN is absent and CLOUDFLARE_API_KEY looks like an API Token,
+        // auth_method should use it as a Bearer token instead of X-Auth-Key
+        let profile = Profile {
+            api_token: None,
+            api_key: Some("oV4DQ6Ql7s6hnSz6p0mKL80FkelLELRRCwCujKv0".to_string()),
+            api_email: Some("user@example.com".to_string()),
+            account_id: None,
+            default_zone: None,
+            output_format: None,
+        };
+
+        let auth = profile.auth_method().unwrap();
+        match auth {
+            AuthMethod::ApiToken(token) => {
+                assert_eq!(token, "oV4DQ6Ql7s6hnSz6p0mKL80FkelLELRRCwCujKv0");
+            }
+            _ => panic!("Expected ApiToken variant when api_key contains an API Token"),
+        }
+    }
+
+    #[test]
+    fn test_profile_auth_method_trims_whitespace() {
+        let profile = Profile {
+            api_token: Some("  test_token_12345  ".to_string()),
+            api_key: None,
+            api_email: None,
+            account_id: None,
+            default_zone: None,
+            output_format: None,
+        };
+
+        let auth = profile.auth_method().unwrap();
+        match auth {
+            AuthMethod::ApiToken(token) => {
+                assert_eq!(token, "test_token_12345");
+            }
+            _ => panic!("Expected ApiToken variant"),
         }
     }
 
