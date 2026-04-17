@@ -1,0 +1,11 @@
+# cargo-tarpaulin configuration
+# https://github.com/xd009642/tarpaulin#configuration-file
+
+[default]
+# Ignore items annotated with `#[cfg(test)]` and inline tests
+ignore-tests = true
+# Exclude the binary entry point — it's a 10-line `#[tokio::main]` wrapper
+# that tarpaulin cannot enter. Behavior is covered by `cfad::runner::run`
+# tests in tests/integration/runner_tests.rs.
+exclude-files = ["src/main.rs"]
+timeout = "300s"

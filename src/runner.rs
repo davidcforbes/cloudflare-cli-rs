@@ -9,7 +9,18 @@ use crate::error::Result;
 use crate::{api, client, metrics, ops, output, utils};
 
 pub async fn run() -> Result<()> {
-    let cli = Cli::parse();
+    run_with_args(std::env::args_os()).await
+}
+
+/// Run with an explicit argv. `main()` calls `run()` which forwards to this,
+/// and tests can invoke it directly with a synthetic argv to drive the full
+/// CLI parse + dispatch path without spawning a subprocess.
+pub async fn run_with_args<I, T>(args: I) -> Result<()>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<std::ffi::OsString> + Clone,
+{
+    let cli = Cli::parse_from(args);
     cli::setup_logging(cli.verbose, cli.quiet);
 
     // Handle --help-json flag

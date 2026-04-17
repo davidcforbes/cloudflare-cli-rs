@@ -211,6 +211,16 @@ impl Config {
     }
 
     pub fn config_path() -> Result<PathBuf> {
+        // Tests (and advanced users) can redirect the config file via the
+        // `CFAD_CONFIG_DIR` env var. When set, the file lives directly at
+        // `$CFAD_CONFIG_DIR/config.toml` without the extra `cfad/` component
+        // — this keeps per-test temp dirs self-contained.
+        if let Ok(dir) = std::env::var("CFAD_CONFIG_DIR") {
+            if !dir.is_empty() {
+                return Ok(PathBuf::from(dir).join("config.toml"));
+            }
+        }
+
         let config_dir =
             dirs::config_dir().ok_or_else(|| CfadError::config("Cannot find config directory"))?;
 
@@ -969,5 +979,90 @@ default_zone = "example.com"
         std::env::remove_var("CLOUDFLARE_API_TOKEN");
         std::env::remove_var("CLOUDFLARE_API_KEY");
         std::env::remove_var("CLOUDFLARE_API_EMAIL");
+    }
+
+    // Build a unique temp dir path and ensure it's removed on drop.
+    // Keeps per-test CFAD_CONFIG_DIR state isolated on all platforms.
+    struct TempConfigDir(PathBuf);
+    impl TempConfigDir {
+        fn new(tag: &str) -> Self {
+            let mut dir = std::env::temp_dir();
+            let unique = format!(
+                "cfad-cfg-{}-{}-{}",
+                tag,
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos(),
+            );
+            dir.push(unique);
+            std::fs::create_dir_all(&dir).unwrap();
+            Self(dir)
+        }
+    }
+    impl Drop for TempConfigDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_config_path_honors_env_override() {
+        let tmp = TempConfigDir::new("path");
+        std::env::set_var("CFAD_CONFIG_DIR", &tmp.0);
+        let path = Config::config_path().unwrap();
+        assert_eq!(path, tmp.0.join("config.toml"));
+        std::env::remove_var("CFAD_CONFIG_DIR");
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_config_save_and_from_file_roundtrip_via_env() {
+        let tmp = TempConfigDir::new("rt");
+        std::env::set_var("CFAD_CONFIG_DIR", &tmp.0);
+
+        let mut cfg = Config::new("primary".to_string());
+        cfg.profiles.insert(
+            "primary".to_string(),
+            Profile {
+                api_token: Some("tok".to_string()),
+                api_key: None,
+                api_email: None,
+                account_id: Some("acc".to_string()),
+                default_zone: None,
+                output_format: None,
+            },
+        );
+        cfg.save().unwrap();
+
+        let loaded = Config::from_file().unwrap();
+        assert_eq!(loaded.default_profile, "primary");
+        assert!(loaded.profiles.contains_key("primary"));
+
+        std::env::remove_var("CFAD_CONFIG_DIR");
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_config_from_file_reports_missing() {
+        // Pointing at an empty temp dir with no config.toml should error.
+        let tmp = TempConfigDir::new("miss");
+        std::env::set_var("CFAD_CONFIG_DIR", &tmp.0);
+        let result = Config::from_file();
+        assert!(result.is_err());
+        std::env::remove_var("CFAD_CONFIG_DIR");
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_config_path_ignores_empty_env_override() {
+        // Empty CFAD_CONFIG_DIR should fall through to the default path.
+        std::env::set_var("CFAD_CONFIG_DIR", "");
+        let path = Config::config_path().unwrap();
+        // Default path ends with cfad/config.toml on every platform we care about.
+        assert!(path.ends_with("cfad/config.toml") || path.ends_with("cfad\\config.toml"));
+        std::env::remove_var("CFAD_CONFIG_DIR");
     }
 }

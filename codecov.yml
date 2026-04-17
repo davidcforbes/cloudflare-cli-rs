@@ -26,3 +26,4 @@ comment:
 ignore:
   - "tests/**/*"
   - "**/*.test.rs"
+  - "src/main.rs"  # binary entry point: excluded by tarpaulin too (see .tarpaulin.toml)

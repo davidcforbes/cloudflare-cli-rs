@@ -91,12 +91,15 @@ pub enum Commands {
 pub fn setup_logging(verbose: bool, quiet: bool) {
     let level = log_level_for(verbose, quiet);
 
-    env_logger::Builder::from_env(
+    // `try_init` lets us call this repeatedly from tests without panicking —
+    // env_logger only installs itself once per process, and we silently ignore
+    // the "already initialized" error that would otherwise blow up test runs.
+    let _ = env_logger::Builder::from_env(
         env_logger::Env::default().default_filter_or(format!("cfad={}", level)),
     )
     .format_target(false)
     .format_timestamp(None)
-    .init();
+    .try_init();
 }
 
 /// Resolve the log-level string that `setup_logging` would apply.
@@ -135,5 +138,14 @@ mod tests {
     fn test_log_level_verbose_wins_over_quiet() {
         // verbose takes precedence when both are set
         assert_eq!(log_level_for(true, true), "debug");
+    }
+
+    #[test]
+    fn test_setup_logging_is_idempotent() {
+        // Safe to call from a test because setup_logging now uses try_init —
+        // a second call is a no-op rather than a panic.
+        setup_logging(false, false);
+        setup_logging(true, false);
+        setup_logging(false, true);
     }
 }

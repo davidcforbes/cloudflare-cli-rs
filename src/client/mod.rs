@@ -52,7 +52,13 @@ pub struct ResultInfo {
 
 impl CloudflareClient {
     pub fn new(auth: AuthMethod) -> Result<Self> {
-        Self::new_with_base_url(auth, "https://api.cloudflare.com/client/v4".to_string())
+        // Allow redirecting the API root via `CFAD_API_BASE_URL` — useful for
+        // tests, staging, and proxies. Falls through to production when unset.
+        let base_url = std::env::var("CFAD_API_BASE_URL")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "https://api.cloudflare.com/client/v4".to_string());
+        Self::new_with_base_url(auth, base_url)
     }
 
     pub fn new_with_base_url(auth: AuthMethod, base_url: String) -> Result<Self> {
@@ -161,8 +167,7 @@ impl CloudflareClient {
         if !status.is_success() {
             let text = response.text().await.unwrap_or_default();
 
-            let is_auth_status =
-                matches!(status.as_u16(), 400 | 401 | 403);
+            let is_auth_status = matches!(status.as_u16(), 400 | 401 | 403);
             let looks_like_auth_error = text.contains("authenticate")
                 || text.contains("Authorization")
                 || text.contains("6111")

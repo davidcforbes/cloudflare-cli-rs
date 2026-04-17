@@ -1344,4 +1344,296 @@ mod tests {
         print_pages_domain(&d);
         print_pages_domains(&[d]);
     }
+
+    // ================ additional variant coverage for uncovered lines ================
+
+    #[test]
+    fn test_print_d1_query_results_multi_result_sets() {
+        // Hits the "Result Set N" header when results.len() > 1 (line 162)
+        let r1: D1QueryResult = de(json!({
+            "results": [{"id": 1, "name": "a"}], "success": true, "meta": {}
+        }));
+        let r2: D1QueryResult = de(json!({
+            "results": [{"id": 2, "name": "b"}], "success": true, "meta": {}
+        }));
+        print_d1_query_results(&[r1, r2]);
+    }
+
+    #[test]
+    fn test_print_d1_query_results_non_object_row() {
+        // Hits the else branch where first row is not an object (line 175)
+        let r: D1QueryResult = de(json!({
+            "results": [42, "string", true],
+            "success": true,
+            "meta": {}
+        }));
+        print_d1_query_results(&[r]);
+    }
+
+    #[test]
+    fn test_print_d1_raw_query_results_multi_result_sets() {
+        // Hits line 219 for raw results multi-set header
+        let r1: D1RawQueryResult = de(json!({
+            "columns": ["id"], "rows": [[1]], "success": true, "meta": {}
+        }));
+        let r2: D1RawQueryResult = de(json!({
+            "columns": ["id"], "rows": [[2]], "success": true, "meta": {}
+        }));
+        print_d1_raw_query_results(&[r1, r2]);
+    }
+
+    #[test]
+    fn test_format_json_value_truncation_branches() {
+        // Hits lines 271, 279, 287: string/array/object > 50 chars truncation
+        let long_str = "x".repeat(100);
+        let long_arr: Vec<serde_json::Value> =
+            (0..30).map(|i| json!(format!("item-{}", i))).collect();
+        let long_obj: serde_json::Map<String, serde_json::Value> = (0..20)
+            .map(|i| (format!("key-{}", i), json!(format!("val-{}", i))))
+            .collect();
+        let r: D1QueryResult = de(json!({
+            "results": [{
+                "long_str": long_str,
+                "long_arr": long_arr,
+                "long_obj": serde_json::Value::Object(long_obj),
+            }],
+            "success": true,
+            "meta": {},
+        }));
+        print_d1_query_results(&[r]);
+    }
+
+    #[test]
+    fn test_print_r2_migration_jobs_all_status_colors() {
+        // Hits lines 464-465: completed, failed, and unknown status branches
+        let completed: R2MigrationJob = de(json!({
+            "id": "j1", "status": "completed", "source": {"provider": "aws", "bucket": "s", "region": null},
+            "destinationBucket": "d", "filesMigrated": 100, "bytesMigrated": 1000,
+            "filesSkipped": 0, "filesFailed": 0, "createdAt": "2026-01-01T00:00:00Z",
+        }));
+        let failed: R2MigrationJob = de(json!({
+            "id": "j2", "status": "failed", "source": {"provider": "aws", "bucket": "s", "region": null},
+            "destinationBucket": "d", "filesMigrated": 0, "bytesMigrated": 0,
+            "filesSkipped": 0, "filesFailed": 1, "createdAt": "2026-01-01T00:00:00Z",
+        }));
+        let pending: R2MigrationJob = de(json!({
+            "id": "j3", "status": "queued", "source": {"provider": "aws", "bucket": "s", "region": null},
+            "destinationBucket": "d", "filesMigrated": 0, "bytesMigrated": 0,
+            "filesSkipped": 0, "filesFailed": 0, "createdAt": "2026-01-01T00:00:00Z",
+        }));
+        print_r2_migration_jobs(&[completed, failed, pending]);
+    }
+
+    #[test]
+    fn test_print_tokens_all_status_colors() {
+        // Hits lines 527-528: disabled, expired, and other status branches
+        let disabled: Token = de(json!({
+            "id": "t1", "name": "d", "status": "disabled"
+        }));
+        let expired: Token = de(json!({
+            "id": "t2", "name": "e", "status": "expired"
+        }));
+        let other: Token = de(json!({
+            "id": "t3", "name": "o", "status": "mystery"
+        }));
+        print_tokens(&[disabled, expired, other]);
+    }
+
+    #[test]
+    fn test_print_token_with_last_used_and_all_optionals() {
+        // Hits line 562 (last_used_on) plus every other optional branch
+        let t: Token = de(json!({
+            "id": "tok1",
+            "name": "Full",
+            "status": "active",
+            "issued_on": "2026-01-01T00:00:00Z",
+            "modified_on": "2026-01-02T00:00:00Z",
+            "not_before": "2026-01-01T00:00:00Z",
+            "expires_on": "2027-01-01T00:00:00Z",
+            "last_used_on": "2026-02-01T00:00:00Z",
+            "policies": [{
+                "id": "p1",
+                "effect": "allow",
+                "resources": {"zone1": "*"},
+                "permission_groups": [
+                    {"id": "pg1", "name": "Zone Read"},
+                    {"id": "pg2"}  // permission_group without a name — hits pg.name.as_deref().unwrap_or("unknown")
+                ],
+            }],
+        }));
+        print_token(&t);
+    }
+
+    #[test]
+    fn test_print_pages_project_full_detail() {
+        // Hits lines 670, 700-702, 721-728: framework, build_config variants,
+        // latest_deployment block. Also "uses_functions: Yes" branch.
+        let p: PagesProject = de(json!({
+            "id": "p1", "name": "site", "subdomain": "site.pages.dev",
+            "domains": ["a.com", "b.com"],
+            "created_on": "2026-01-01T00:00:00Z",
+            "production_branch": "main",
+            "framework": "astro",
+            "uses_functions": true,
+            "build_config": {
+                "build_command": "npm run build",
+                "destination_dir": "dist",
+                "root_dir": "app",
+                "build_caching": true,
+            },
+            "source": {
+                "type": "github",
+                "config": { "owner": "o", "repo_name": "r", "production_branch": "main" },
+            },
+            "latest_deployment": {
+                "id": "d1", "short_id": "d1s", "project_id": "p1", "project_name": "site",
+                "environment": "production",
+                "url": "https://d1.site.pages.dev",
+                "created_on": "2026-01-01T00:00:00Z",
+                "modified_on": "2026-01-01T00:00:00Z",
+                "is_skipped": false,
+                "latest_stage": {
+                    "name": "deploy", "status": "success",
+                    "started_on": "2026-01-01T00:00:00Z",
+                    "ended_on": "2026-01-01T00:05:00Z"
+                },
+            },
+        }));
+        print_pages_project(&p);
+    }
+
+    #[test]
+    fn test_print_pages_project_build_caching_disabled() {
+        // Hits the `if caching { "Enabled" } else { "Disabled" }` false branch (line 702)
+        let p: PagesProject = de(json!({
+            "id": "p2", "name": "site2", "subdomain": "site2.pages.dev",
+            "domains": [], "created_on": "2026-01-01T00:00:00Z",
+            "production_branch": "main",
+            "uses_functions": false,
+            "build_config": {
+                "build_command": "yarn build",
+                "destination_dir": "out",
+                "build_caching": false,
+            },
+        }));
+        print_pages_project(&p);
+    }
+
+    #[test]
+    fn test_print_deployments_all_stage_colors() {
+        // Hits lines 766-771: success, failure, active, and "other" color branches
+        // Also hits line 778: non-production environment (yellow)
+        let make = |id: &str, env: &str, stage_status: &str| -> Deployment {
+            de(json!({
+                "id": id, "short_id": "x", "project_id": "p", "project_name": "p",
+                "environment": env,
+                "url": format!("https://{}.p.pages.dev", id),
+                "created_on": "2026-01-01T00:00:00Z",
+                "modified_on": "2026-01-01T00:00:00Z",
+                "is_skipped": false,
+                "latest_stage": {"name": "deploy", "status": stage_status,
+                                 "started_on": "2026-01-01T00:00:00Z", "ended_on": "2026-01-01T00:05:00Z"},
+            }))
+        };
+        print_deployments(&[
+            make("ok", "production", "success"),
+            make("no", "preview", "failure"),
+            make("go", "preview", "active"),
+            make("??", "preview", "idle"),
+        ]);
+    }
+
+    #[test]
+    fn test_print_deployments_no_latest_stage() {
+        // Hits the None branch of latest_stage -> "-"
+        let d: Deployment = de(json!({
+            "id": "d1", "short_id": "x", "project_id": "p", "project_name": "p",
+            "environment": "preview",
+            "created_on": "2026-01-01T00:00:00Z",
+            "modified_on": "2026-01-01T00:00:00Z",
+            "is_skipped": false,
+        }));
+        print_deployments(&[d]);
+    }
+
+    #[test]
+    fn test_print_deployment_full_detail_with_aliases_and_long_commit() {
+        // Hits lines 817 (uses_functions Yes branch), 824-826 (aliases block),
+        // 842 (commit_message > 60 chars truncation), 852-861 (all stage icons).
+        let long_msg = "A very long commit message that definitely exceeds sixty characters so the truncation path runs";
+        let d: Deployment = de(json!({
+            "id": "d1full", "short_id": "abc1234",
+            "project_id": "p", "project_name": "p",
+            "environment": "production",
+            "url": "https://abc.p.pages.dev",
+            "created_on": "2026-01-01T00:00:00Z",
+            "modified_on": "2026-01-01T00:00:00Z",
+            "is_skipped": false,
+            "uses_functions": true,
+            "aliases": ["alias-a.p.pages.dev", "alias-b.p.pages.dev"],
+            "latest_stage": {"name": "deploy", "status": "success",
+                             "started_on": "2026-01-01T00:00:00Z", "ended_on": "2026-01-01T00:05:00Z"},
+            "deployment_trigger": {
+                "type": "push",
+                "metadata": {
+                    "branch": "main",
+                    "commit_hash": "abcdef1234567890",
+                    "commit_message": long_msg,
+                },
+            },
+            "stages": [
+                {"name": "queued", "status": "success"},
+                {"name": "build", "status": "failure"},
+                {"name": "deploy", "status": "active"},
+                {"name": "verify", "status": "skipped"},
+                {"name": "final", "status": "idle"},
+            ],
+        }));
+        print_deployment(&d);
+    }
+
+    #[test]
+    fn test_print_deployment_minimal() {
+        // Minimal Deployment — exercises the None branches of short_id, url,
+        // created_on, modified_on, deployment_trigger, and the empty aliases/stages.
+        let d: Deployment = de(json!({
+            "id": "dmini",
+            "project_id": "p", "project_name": "p",
+            "environment": "production",
+            "is_skipped": true,
+        }));
+        print_deployment(&d);
+    }
+
+    #[test]
+    fn test_print_pages_domains_pending_and_unknown() {
+        // Hits lines 887-890 (pending, other status branches) and 896 (non-active cert)
+        let pending: PagesDomain = de(json!({
+            "id": "dm1", "name": "p.example.com", "status": "pending",
+            "verification_data": {"status": "pending"}, "validation_data": {"status": "pending"},
+            "certificate_status": "pending",
+            "created_on": "2026-01-01T00:00:00Z",
+        }));
+        let mystery: PagesDomain = de(json!({
+            "id": "dm2", "name": "m.example.com", "status": "mystery",
+            "verification_data": {"status": "pending"}, "validation_data": {"status": "pending"},
+            "certificate_status": "issuing",
+            "created_on": "2026-01-01T00:00:00Z",
+        }));
+        print_pages_domains(&[pending, mystery]);
+    }
+
+    #[test]
+    fn test_print_pages_domain_with_verification_and_cert() {
+        // Hits lines 916 (verification_status) and 919 (certificate_status)
+        let d: PagesDomain = de(json!({
+            "id": "dm3", "name": "c.example.com", "status": "active",
+            "verification_status": "verified",
+            "certificate_status": "active",
+            "verification_data": {"status": "active"},
+            "validation_data": {"status": "active"},
+            "created_on": "2026-01-01T00:00:00Z",
+        }));
+        print_pages_domain(&d);
+    }
 }

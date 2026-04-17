@@ -2354,6 +2354,237 @@ async fn test_handle_profile_list_returns_ok() {
     assert!(res.is_ok());
 }
 
+// -- Config mutation handlers, isolated via CFAD_CONFIG_DIR --
+// We set CFAD_CONFIG_DIR to a fresh temp dir before each test so init/add/
+// set_default never touch the real user config at ~/AppData/Roaming/cfad.
+
+struct TempDirGuard(std::path::PathBuf);
+impl TempDirGuard {
+    fn new(tag: &str) -> Self {
+        let mut dir = std::env::temp_dir();
+        dir.push(format!(
+            "cfad-runner-{}-{}-{}",
+            tag,
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::env::set_var("CFAD_CONFIG_DIR", &dir);
+        Self(dir)
+    }
+}
+impl Drop for TempDirGuard {
+    fn drop(&mut self) {
+        std::env::remove_var("CFAD_CONFIG_DIR");
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_handle_config_init_creates_file() {
+    let _guard = TempDirGuard::new("init");
+    assert!(runner::handle_config_init().await.is_ok());
+    // Invoking the same handler through the dispatcher hits that path too.
+    assert!(
+        runner::handle_config_command(cli::config::ConfigCommand::Init)
+            .await
+            .is_ok()
+    );
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_handle_profile_add_then_set_default() {
+    let _guard = TempDirGuard::new("profadd");
+    runner::handle_config_init().await.unwrap();
+    // Add a named profile
+    assert!(runner::handle_profile_add("work".to_string()).await.is_ok());
+    // Dispatching the same via handle_config_command
+    assert!(
+        runner::handle_config_command(cli::config::ConfigCommand::Profiles(
+            cli::config::ProfileCommand::Add {
+                name: "home".to_string(),
+            },
+        ))
+        .await
+        .is_ok()
+    );
+    // List (exercises the "some profiles + default marker" branch)
+    assert!(runner::handle_profile_list().await.is_ok());
+    // Now set a non-default profile as default
+    assert!(runner::handle_profile_set_default("work".to_string())
+        .await
+        .is_ok());
+    // Dispatch route for set-default
+    assert!(
+        runner::handle_config_command(cli::config::ConfigCommand::Profiles(
+            cli::config::ProfileCommand::SetDefault {
+                name: "home".to_string(),
+            },
+        ))
+        .await
+        .is_ok()
+    );
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_handle_profile_set_default_errors_when_missing() {
+    let _guard = TempDirGuard::new("misdef");
+    runner::handle_config_init().await.unwrap();
+    let res = runner::handle_profile_set_default("does-not-exist".to_string()).await;
+    assert!(res.is_err());
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_handle_config_show_dispatches() {
+    let _guard = TempDirGuard::new("show");
+    runner::handle_config_init().await.unwrap();
+    runner::handle_profile_add("default".to_string())
+        .await
+        .unwrap();
+    // With a valid config file, Config::load resolves the default profile.
+    // Any credentials from env vars leaking in are fine — the function prints redacted.
+    let _ = runner::handle_config_command(cli::config::ConfigCommand::Show { profile: None }).await;
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_handle_profile_list_with_populated_config() {
+    let _guard = TempDirGuard::new("pl");
+    runner::handle_config_init().await.unwrap();
+    runner::handle_profile_add("alpha".to_string())
+        .await
+        .unwrap();
+    runner::handle_profile_add("beta".to_string())
+        .await
+        .unwrap();
+    assert!(runner::handle_profile_list().await.is_ok());
+}
+
+// ------------------ runner::run_with_args end-to-end ------------------
+// Exercises the top-level CLI parse + dispatch path. We isolate env state
+// and point the client at a wiremock via CFAD_API_BASE_URL.
+
+struct EnvGuard {
+    keys: Vec<&'static str>,
+}
+impl EnvGuard {
+    fn scrub_cf_env() -> Self {
+        let keys = vec![
+            "CLOUDFLARE_API_TOKEN",
+            "CLOUDFLARE_API_KEY",
+            "CLOUDFLARE_API_EMAIL",
+            "CLOUDFLARE_ACCOUNT_ID",
+            "CFAD_API_BASE_URL",
+            "CFAD_CONFIG_DIR",
+        ];
+        for k in &keys {
+            std::env::remove_var(k);
+        }
+        Self { keys }
+    }
+    fn set(&self, key: &'static str, value: &str) {
+        std::env::set_var(key, value);
+    }
+}
+impl Drop for EnvGuard {
+    fn drop(&mut self) {
+        for k in &self.keys {
+            std::env::remove_var(k);
+        }
+    }
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_run_with_args_help_json_shortcircuits() {
+    let _env = EnvGuard::scrub_cf_env();
+    // No mock server needed — --help-json returns before any client is built.
+    let res = runner::run_with_args(["cfad", "--help-json"]).await;
+    assert!(res.is_ok());
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_run_with_args_no_command_errors() {
+    let _env = EnvGuard::scrub_cf_env();
+    // No subcommand + no --help-json -> validation error.
+    let res = runner::run_with_args(["cfad"]).await;
+    assert!(res.is_err());
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_run_with_args_config_init_shortcircuits_before_auth() {
+    // Config commands run before auth resolution, so we only need a temp dir.
+    let _env = EnvGuard::scrub_cf_env();
+    let _tmp = TempDirGuard::new("rwac-init");
+    let res = runner::run_with_args(["cfad", "config", "init"]).await;
+    assert!(res.is_ok());
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_run_with_args_zone_list_full_path() {
+    // Full end-to-end: CLI parse -> config load -> auth -> client -> dispatch.
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [zone_body()]
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let env = EnvGuard::scrub_cf_env();
+    env.set("CFAD_API_BASE_URL", &mock_server.uri());
+    // Config::load wants _some_ credential present before the --api-token
+    // CLI override is applied; env supplies a placeholder that the override
+    // then replaces.
+    env.set("CLOUDFLARE_API_TOKEN", "placeholder");
+
+    let res = runner::run_with_args(["cfad", "--api-token", "test-token", "zone", "list"]).await;
+    assert!(res.is_ok(), "run_with_args failed: {:?}", res);
+}
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_run_with_args_applies_key_email_overrides() {
+    // Validates that the api_key + api_email branches of run_with_args fire.
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let env = EnvGuard::scrub_cf_env();
+    env.set("CFAD_API_BASE_URL", &mock_server.uri());
+    // Placeholder env lets Config::load succeed; CLI flags then override.
+    env.set("CLOUDFLARE_API_TOKEN", "placeholder");
+
+    let res = runner::run_with_args([
+        "cfad",
+        "--api-key",
+        "testkeyhex",
+        "--api-email",
+        "user@example.com",
+        "zone",
+        "list",
+    ])
+    .await;
+    assert!(res.is_ok(), "key+email flow failed: {:?}", res);
+}
+
 // ------------------ r2 op error branches: missing result errors ------------------
 
 #[tokio::test]
