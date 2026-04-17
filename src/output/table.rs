@@ -243,7 +243,10 @@ pub fn print_d1_raw_query_results(results: &[D1RawQueryResult]) {
 
         // Add rows
         for row in &result.rows {
-            let cells: Vec<Cell> = row.iter().map(|v| Cell::new(format_json_value(v))).collect();
+            let cells: Vec<Cell> = row
+                .iter()
+                .map(|v| Cell::new(format_json_value(v)))
+                .collect();
             table.add_row(cells);
         }
 
@@ -669,7 +672,10 @@ pub fn print_pages_project(project: &PagesProject) {
     if let Some(created) = &project.created_on {
         println!("  Created: {}", created);
     }
-    println!("  Uses Functions: {}", if project.uses_functions { "Yes" } else { "No" });
+    println!(
+        "  Uses Functions: {}",
+        if project.uses_functions { "Yes" } else { "No" }
+    );
 
     if !project.domains.is_empty() {
         println!("\n  Custom Domains:");
@@ -691,7 +697,10 @@ pub fn print_pages_project(project: &PagesProject) {
             println!("    Root Dir: {}", root);
         }
         if let Some(caching) = build.build_caching {
-            println!("    Caching: {}", if caching { "Enabled" } else { "Disabled" });
+            println!(
+                "    Caching: {}",
+                if caching { "Enabled" } else { "Disabled" }
+            );
         }
     }
 
@@ -798,8 +807,18 @@ pub fn print_deployment(deployment: &Deployment) {
     if let Some(modified) = &deployment.modified_on {
         println!("  Modified: {}", modified);
     }
-    println!("  Skipped: {}", if deployment.is_skipped { "Yes" } else { "No" });
-    println!("  Uses Functions: {}", if deployment.uses_functions { "Yes" } else { "No" });
+    println!(
+        "  Skipped: {}",
+        if deployment.is_skipped { "Yes" } else { "No" }
+    );
+    println!(
+        "  Uses Functions: {}",
+        if deployment.uses_functions {
+            "Yes"
+        } else {
+            "No"
+        }
+    );
 
     if !deployment.aliases.is_empty() {
         println!("\n  Aliases:");

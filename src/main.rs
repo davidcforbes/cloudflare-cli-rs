@@ -732,13 +732,24 @@ async fn handle_d1_schema(
                 let col_type = row.get("type").and_then(|v| v.as_str()).unwrap_or("");
                 let notnull = row.get("notnull").and_then(|v| v.as_i64()).unwrap_or(0);
                 let pk = row.get("pk").and_then(|v| v.as_i64()).unwrap_or(0);
-                let dflt = row.get("dflt_value").and_then(|v| v.as_str()).unwrap_or("NULL");
+                let dflt = row
+                    .get("dflt_value")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("NULL");
 
                 let mut attrs = Vec::new();
-                if pk == 1 { attrs.push("PRIMARY KEY"); }
-                if notnull == 1 { attrs.push("NOT NULL"); }
+                if pk == 1 {
+                    attrs.push("PRIMARY KEY");
+                }
+                if notnull == 1 {
+                    attrs.push("NOT NULL");
+                }
 
-                let attrs_str = if attrs.is_empty() { String::new() } else { format!(" ({})", attrs.join(", ")) };
+                let attrs_str = if attrs.is_empty() {
+                    String::new()
+                } else {
+                    format!(" ({})", attrs.join(", "))
+                };
                 println!("  {} {}{} [default: {}]", name, col_type, attrs_str, dflt);
             }
         }
@@ -768,7 +779,10 @@ async fn handle_d1_schema(
         let query_results = ops::d1::query_database(client, account_id, &db_id, sql, None).await?;
 
         let empty_vec = vec![];
-        let results = query_results.first().map(|r| &r.results).unwrap_or(&empty_vec);
+        let results = query_results
+            .first()
+            .map(|r| &r.results)
+            .unwrap_or(&empty_vec);
 
         if results.is_empty() {
             println!("\nNo tables found in database.");
@@ -806,7 +820,10 @@ async fn resolve_d1_database_id(
         }
     }
 
-    Err(crate::error::CfadError::not_found("D1 database", identifier))
+    Err(crate::error::CfadError::not_found(
+        "D1 database",
+        identifier,
+    ))
 }
 
 async fn handle_pages_command(
@@ -902,12 +919,8 @@ async fn handle_pages_command(
             let account_id = resolve_account_id(account_id, None)?;
             ops::pages::purge_build_cache(client, &account_id, &project).await
         }
-        PagesCommand::Deploy(deploy_cmd) => {
-            handle_pages_deploy_command(client, deploy_cmd).await
-        }
-        PagesCommand::Domain(domain_cmd) => {
-            handle_pages_domain_command(client, domain_cmd).await
-        }
+        PagesCommand::Deploy(deploy_cmd) => handle_pages_deploy_command(client, deploy_cmd).await,
+        PagesCommand::Domain(domain_cmd) => handle_pages_domain_command(client, domain_cmd).await,
     }
 }
 

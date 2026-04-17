@@ -125,8 +125,7 @@ fn test_pages_domain_deserialize() {
         "created_on": "2024-01-01T00:00:00Z"
     }"#;
 
-    let domain: PagesDomain =
-        serde_json::from_str(json).expect("Failed to deserialize domain");
+    let domain: PagesDomain = serde_json::from_str(json).expect("Failed to deserialize domain");
 
     assert_eq!(domain.name, "example.com");
     assert_eq!(domain.status, "active");
@@ -144,8 +143,7 @@ fn test_deployment_logs_deserialize() {
         "has_more": false
     }"#;
 
-    let logs: DeploymentLogs =
-        serde_json::from_str(json).expect("Failed to deserialize logs");
+    let logs: DeploymentLogs = serde_json::from_str(json).expect("Failed to deserialize logs");
 
     assert_eq!(logs.data.len(), 3);
     assert!(!logs.has_more);
@@ -332,7 +330,9 @@ async fn test_list_deployments_success() {
     let client = create_test_client(&mock_server).await;
 
     Mock::given(method("GET"))
-        .and(path("/accounts/test-account/pages/projects/my-project/deployments"))
+        .and(path(
+            "/accounts/test-account/pages/projects/my-project/deployments",
+        ))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "success": true,
             "errors": [],
@@ -368,7 +368,9 @@ async fn test_create_deployment_success() {
     let client = create_test_client(&mock_server).await;
 
     Mock::given(method("POST"))
-        .and(path("/accounts/test-account/pages/projects/my-project/deployments"))
+        .and(path(
+            "/accounts/test-account/pages/projects/my-project/deployments",
+        ))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "success": true,
             "errors": [],
@@ -399,7 +401,9 @@ async fn test_rollback_deployment_success() {
     let client = create_test_client(&mock_server).await;
 
     Mock::given(method("POST"))
-        .and(path("/accounts/test-account/pages/projects/my-project/deployments/old-deploy/rollback"))
+        .and(path(
+            "/accounts/test-account/pages/projects/my-project/deployments/old-deploy/rollback",
+        ))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "success": true,
             "errors": [],
@@ -412,9 +416,10 @@ async fn test_rollback_deployment_success() {
         .mount(&mock_server)
         .await;
 
-    let deployment = pages::rollback_deployment(&client, "test-account", "my-project", "old-deploy")
-        .await
-        .expect("Failed to rollback deployment");
+    let deployment =
+        pages::rollback_deployment(&client, "test-account", "my-project", "old-deploy")
+            .await
+            .expect("Failed to rollback deployment");
 
     assert_eq!(deployment.id, "rollback-deploy-id");
 }
@@ -425,7 +430,9 @@ async fn test_list_domains_success() {
     let client = create_test_client(&mock_server).await;
 
     Mock::given(method("GET"))
-        .and(path("/accounts/test-account/pages/projects/my-project/domains"))
+        .and(path(
+            "/accounts/test-account/pages/projects/my-project/domains",
+        ))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "success": true,
             "errors": [],
@@ -453,7 +460,9 @@ async fn test_add_domain_success() {
     let client = create_test_client(&mock_server).await;
 
     Mock::given(method("POST"))
-        .and(path("/accounts/test-account/pages/projects/my-project/domains"))
+        .and(path(
+            "/accounts/test-account/pages/projects/my-project/domains",
+        ))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "success": true,
             "errors": [],
@@ -484,7 +493,9 @@ async fn test_delete_domain_success() {
     let client = create_test_client(&mock_server).await;
 
     Mock::given(method("DELETE"))
-        .and(path("/accounts/test-account/pages/projects/my-project/domains/example.com"))
+        .and(path(
+            "/accounts/test-account/pages/projects/my-project/domains/example.com",
+        ))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "success": true,
             "errors": [],
@@ -505,7 +516,9 @@ async fn test_purge_build_cache_success() {
     let client = create_test_client(&mock_server).await;
 
     Mock::given(method("POST"))
-        .and(path("/accounts/test-account/pages/projects/my-project/purge_build_cache"))
+        .and(path(
+            "/accounts/test-account/pages/projects/my-project/purge_build_cache",
+        ))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "success": true,
             "errors": [],

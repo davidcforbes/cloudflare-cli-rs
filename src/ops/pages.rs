@@ -279,8 +279,7 @@ pub async fn verify_domain(
         "/accounts/{}/pages/projects/{}/domains/{}",
         account_id, project_name, domain_name
     );
-    let response: CfResponse<PagesDomain> =
-        client.patch(&endpoint, serde_json::json!({})).await?;
+    let response: CfResponse<PagesDomain> = client.patch(&endpoint, serde_json::json!({})).await?;
     let domain = response
         .result
         .ok_or_else(|| crate::error::CfadError::api("No result returned from verify domain"))?;

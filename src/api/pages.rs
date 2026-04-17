@@ -479,6 +479,9 @@ mod tests {
 
         let source: SourceConfig = serde_json::from_str(json).unwrap();
         assert_eq!(source.source_type, "github");
-        assert_eq!(source.config.as_ref().unwrap().owner, Some("myuser".to_string()));
+        assert_eq!(
+            source.config.as_ref().unwrap().owner,
+            Some("myuser".to_string())
+        );
     }
 }
