@@ -532,3 +532,186 @@ async fn test_purge_build_cache_success() {
 
     assert!(result.is_ok());
 }
+
+// ---------------- additional coverage: previously-uncovered Pages operations ----------------
+
+#[tokio::test]
+async fn test_update_project_success() {
+    let mock_server = MockServer::start().await;
+    let client = create_test_client(&mock_server).await;
+
+    Mock::given(method("PATCH"))
+        .and(path("/accounts/test-account/pages/projects/my-project"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true,
+            "errors": [],
+            "messages": [],
+            "result": {
+                "id": "p1",
+                "name": "my-project",
+                "subdomain": "my-project.pages.dev",
+                "domains": [],
+                "created_on": "2026-01-01T00:00:00Z",
+                "production_branch": "main",
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let update = cfad::api::pages::UpdateProject {
+        name: None,
+        production_branch: Some("develop".to_string()),
+        build_config: None,
+        deployment_configs: None,
+    };
+    let res = pages::update_project(&client, "test-account", "my-project", update).await;
+    assert!(res.is_ok());
+}
+
+#[tokio::test]
+async fn test_get_deployment_and_delete_and_retry_and_rollback() {
+    let mock_server = MockServer::start().await;
+    let client = create_test_client(&mock_server).await;
+
+    let deployment_body = serde_json::json!({
+        "success": true,
+        "errors": [],
+        "messages": [],
+        "result": {
+            "id": "d1",
+            "short_id": "abc123",
+            "project_id": "p1",
+            "project_name": "my-project",
+            "environment": "production",
+            "url": "https://abc123.my-project.pages.dev",
+            "created_on": "2026-01-01T00:00:00Z",
+            "modified_on": "2026-01-01T00:00:00Z",
+            "is_skipped": false,
+            "latest_stage": { "name": "deploy", "status": "success",
+                              "started_on": "2026-01-01T00:00:00Z",
+                              "ended_on": "2026-01-01T00:05:00Z" },
+            "deployment_trigger": { "type": "push",
+                                    "metadata": { "branch": "main", "commit_hash": "abcdef1", "commit_message": "Update" } }
+        }
+    });
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/accounts/test-account/pages/projects/my-project/deployments/d1",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(deployment_body.clone()))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("DELETE"))
+        .and(path(
+            "/accounts/test-account/pages/projects/my-project/deployments/d1",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": null
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path(
+            "/accounts/test-account/pages/projects/my-project/deployments/d1/retry",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(deployment_body.clone()))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path(
+            "/accounts/test-account/pages/projects/my-project/deployments/d1/rollback",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(deployment_body.clone()))
+        .mount(&mock_server)
+        .await;
+
+    assert!(
+        pages::get_deployment(&client, "test-account", "my-project", "d1")
+            .await
+            .is_ok()
+    );
+    assert!(
+        pages::delete_deployment(&client, "test-account", "my-project", "d1")
+            .await
+            .is_ok()
+    );
+    assert!(
+        pages::retry_deployment(&client, "test-account", "my-project", "d1")
+            .await
+            .is_ok()
+    );
+    assert!(
+        pages::rollback_deployment(&client, "test-account", "my-project", "d1")
+            .await
+            .is_ok()
+    );
+}
+
+#[tokio::test]
+async fn test_get_deployment_logs_success() {
+    let mock_server = MockServer::start().await;
+    let client = create_test_client(&mock_server).await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/accounts/test-account/pages/projects/my-project/deployments/d1/history/logs",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true,
+            "errors": [],
+            "messages": [],
+            "result": { "total": 1, "includes_container_logs": false, "data": [
+                { "ts": "2026-01-01T00:00:00Z", "line": "Build started" }
+            ] }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let result = pages::get_deployment_logs(&client, "test-account", "my-project", "d1").await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_get_domain_and_verify_domain() {
+    let mock_server = MockServer::start().await;
+    let client = create_test_client(&mock_server).await;
+
+    let domain_body = serde_json::json!({
+        "success": true,
+        "errors": [],
+        "messages": [],
+        "result": {
+            "id": "dm1", "name": "custom.example.com", "status": "active",
+            "verification_data": { "status": "active" },
+            "validation_data": { "status": "active" },
+            "created_on": "2026-01-01T00:00:00Z",
+        }
+    });
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/accounts/test-account/pages/projects/my-project/domains/custom.example.com",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(domain_body.clone()))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("PATCH"))
+        .and(path(
+            "/accounts/test-account/pages/projects/my-project/domains/custom.example.com",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(domain_body))
+        .mount(&mock_server)
+        .await;
+
+    assert!(
+        pages::get_domain(&client, "test-account", "my-project", "custom.example.com")
+            .await
+            .is_ok()
+    );
+    assert!(
+        pages::verify_domain(&client, "test-account", "my-project", "custom.example.com")
+            .await
+            .is_ok()
+    );
+}

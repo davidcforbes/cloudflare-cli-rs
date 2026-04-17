@@ -1,8 +1,9 @@
 use cfad::api::r2::{
-    CreateR2Bucket, CreateR2EventNotification, CreateR2MigrationJob, CreateR2SippyConfig,
-    CreateR2TempCredentials, R2Bucket, R2BucketList, R2CorsConfig, R2CorsRule, R2CustomDomain,
-    R2EventNotification, R2LifecycleConfig, R2LockConfig, R2ManagedDomain, R2Metrics,
-    R2MigrationJob, R2MigrationProgress, R2SippyConfig, R2TempCredentials, UpdateR2Bucket,
+    CreateR2Bucket, CreateR2CustomDomain, CreateR2EventNotification, CreateR2MigrationJob,
+    CreateR2SippyConfig, CreateR2TempCredentials, R2Bucket, R2BucketList, R2CorsConfig, R2CorsRule,
+    R2CustomDomain, R2EventNotification, R2LifecycleConfig, R2LifecycleRule, R2LockConfig,
+    R2ManagedDomain, R2Metrics, R2MigrationJob, R2MigrationProgress, R2SippyConfig,
+    R2TempCredentials, UpdateR2Bucket, UpdateR2CustomDomain, UpdateR2LockConfig,
 };
 use cfad::client::{CfResponse, CloudflareClient};
 use cfad::config::AuthMethod;
@@ -1329,4 +1330,157 @@ async fn test_create_temp_credentials_read_only() {
         .unwrap();
 
     assert_eq!(creds.access_key_id, "READ_ONLY_KEY");
+}
+
+// ------------------ additional coverage: custom domain, managed domain, lifecycle, lock ------------------
+
+#[tokio::test]
+async fn test_get_custom_domain_success() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path(
+            "/accounts/acc/r2/buckets/b/domains/custom/cdn.example.com",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": { "domain": "cdn.example.com", "enabled": true, "status": "active" }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = create_test_client(&mock_server).await;
+    let d = r2::get_custom_domain(&client, "acc", "b", "cdn.example.com")
+        .await
+        .unwrap();
+    assert_eq!(d.domain, "cdn.example.com");
+}
+
+#[tokio::test]
+async fn test_create_custom_domain_success() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/accounts/acc/r2/buckets/b/domains/custom"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": { "domain": "cdn.example.com", "enabled": false, "status": "pending" }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = create_test_client(&mock_server).await;
+    let req = CreateR2CustomDomain {
+        domain: "cdn.example.com".to_string(),
+        zone_id: Some("z1".to_string()),
+        min_tls: Some("1.2".to_string()),
+    };
+    let d = r2::create_custom_domain(&client, "acc", "b", req)
+        .await
+        .unwrap();
+    assert_eq!(d.domain, "cdn.example.com");
+}
+
+#[tokio::test]
+async fn test_update_custom_domain_success() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path(
+            "/accounts/acc/r2/buckets/b/domains/custom/cdn.example.com",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": { "domain": "cdn.example.com", "enabled": true, "status": "active" }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = create_test_client(&mock_server).await;
+    let update = UpdateR2CustomDomain {
+        enabled: Some(true),
+        min_tls: None,
+    };
+    let d = r2::update_custom_domain(&client, "acc", "b", "cdn.example.com", update)
+        .await
+        .unwrap();
+    assert!(d.enabled);
+}
+
+#[tokio::test]
+async fn test_delete_custom_domain_success() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path(
+            "/accounts/acc/r2/buckets/b/domains/custom/cdn.example.com",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": null
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = create_test_client(&mock_server).await;
+    let res = r2::delete_custom_domain(&client, "acc", "b", "cdn.example.com").await;
+    assert!(res.is_ok());
+}
+
+#[tokio::test]
+async fn test_update_managed_domain_enable_and_disable() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/accounts/acc/r2/buckets/b/domains/managed"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": { "enabled": true, "domain": "pub-abc.r2.dev" }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = create_test_client(&mock_server).await;
+    let r = r2::update_managed_domain(&client, "acc", "b", true)
+        .await
+        .unwrap();
+    assert!(r.enabled);
+    // Also exercise the disabled branch via a second call
+    let r = r2::update_managed_domain(&client, "acc", "b", false)
+        .await
+        .unwrap();
+    // response body stays the same under mock; just checking it doesn't error
+    let _ = r;
+}
+
+#[tokio::test]
+async fn test_set_lifecycle_success() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/accounts/acc/r2/buckets/b/lifecycle"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": null
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = create_test_client(&mock_server).await;
+    let config = R2LifecycleConfig {
+        rules: vec![R2LifecycleRule {
+            id: "rule1".to_string(),
+            enabled: true,
+            conditions: Default::default(),
+            actions: Default::default(),
+        }],
+    };
+    let res = r2::set_lifecycle(&client, "acc", "b", config).await;
+    assert!(res.is_ok());
+}
+
+#[tokio::test]
+async fn test_set_lock_success() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/accounts/acc/r2/buckets/b/lock"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": null
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = create_test_client(&mock_server).await;
+    let update = UpdateR2LockConfig {
+        enabled: true,
+        mode: Some("governance".to_string()),
+        default_retention_days: Some(30),
+    };
+    let res = r2::set_lock(&client, "acc", "b", update).await;
+    assert!(res.is_ok());
 }
