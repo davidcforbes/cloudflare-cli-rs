@@ -10,6 +10,7 @@ mod integration {
     mod error_tests;
     mod pages_tests;
     mod r2_tests;
+    mod runner_tests;
     mod token_tests;
     mod zone_tests;
 }

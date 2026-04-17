@@ -1,0 +1,488 @@
+//! Integration tests for the `cfad::runner` dispatch layer.
+//!
+//! Each `handle_*` function was previously inlined in `main.rs` and had no
+//! coverage. After the refactor extracting dispatch into `src/runner.rs`,
+//! these tests exercise the top-level command handlers end-to-end with a
+//! mock Cloudflare API.
+
+use cfad::cli;
+use cfad::client::CloudflareClient;
+use cfad::config::AuthMethod;
+use cfad::runner;
+use wiremock::matchers::{method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
+
+async fn mock_client(mock_server: &MockServer) -> CloudflareClient {
+    CloudflareClient::new_with_base_url(
+        AuthMethod::ApiToken("test_token".to_string()),
+        mock_server.uri(),
+    )
+    .unwrap()
+}
+
+fn zone_body() -> serde_json::Value {
+    serde_json::json!({
+        "id": "zone123abc",
+        "name": "example.com",
+        "status": "active",
+        "paused": false,
+        "development_mode": 0,
+        "name_servers": ["ns1.cloudflare.com"],
+        "original_name_servers": [],
+        "owner": {"id": "o1", "type": "user", "email": "u@example.com"},
+        "account": {"id": "a1", "name": "Test"},
+        "created_on": "2026-01-01T00:00:00Z",
+        "modified_on": "2026-01-01T00:00:00Z"
+    })
+}
+
+fn dns_record_body() -> serde_json::Value {
+    serde_json::json!({
+        "id": "rec1",
+        "zone_id": "zone123abc",
+        "zone_name": "example.com",
+        "type": "A",
+        "name": "www.example.com",
+        "content": "203.0.113.1",
+        "ttl": 3600,
+        "proxiable": true,
+        "proxied": false,
+        "locked": false,
+        "created_on": "2026-01-01T00:00:00Z",
+        "modified_on": "2026-01-01T00:00:00Z"
+    })
+}
+
+// ------------------ DNS handler coverage ------------------
+
+#[tokio::test]
+async fn test_handle_dns_list_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [zone_body()]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/zones/zone123abc/dns_records"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [dns_record_body()]
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::dns::DnsCommand::List {
+        zone: "example.com".to_string(),
+        r#type: None,
+        name: None,
+    };
+    assert!(runner::handle_dns_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_dns_show_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [zone_body()]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/zones/zone123abc/dns_records/rec1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": dns_record_body()
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::dns::DnsCommand::Show {
+        zone: "example.com".to_string(),
+        record_id: "rec1".to_string(),
+    };
+    assert!(runner::handle_dns_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_dns_add_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [zone_body()]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/zones/zone123abc/dns_records"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": dns_record_body()
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::dns::DnsCommand::Add {
+        zone: "example.com".to_string(),
+        r#type: "A".to_string(),
+        name: "www".to_string(),
+        content: "203.0.113.1".to_string(),
+        ttl: 3600,
+        proxied: false,
+        priority: None,
+    };
+    assert!(runner::handle_dns_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_dns_update_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [zone_body()]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("PUT"))
+        .and(path("/zones/zone123abc/dns_records/rec1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": dns_record_body()
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::dns::DnsCommand::Update {
+        zone: "example.com".to_string(),
+        record_id: "rec1".to_string(),
+        name: Some("www2".to_string()),
+        content: Some("203.0.113.2".to_string()),
+        ttl: Some(7200),
+        proxied: Some(true),
+        priority: None,
+    };
+    assert!(runner::handle_dns_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_dns_delete_requires_confirm() {
+    let mock_server = MockServer::start().await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::dns::DnsCommand::Delete {
+        zone: "example.com".to_string(),
+        record_id: "rec1".to_string(),
+        confirm: false,
+    };
+    assert!(runner::handle_dns_command(&client, cmd).await.is_err());
+}
+
+#[tokio::test]
+async fn test_handle_dns_delete_with_confirm_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [zone_body()]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("DELETE"))
+        .and(path("/zones/zone123abc/dns_records/rec1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": null
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::dns::DnsCommand::Delete {
+        zone: "example.com".to_string(),
+        record_id: "rec1".to_string(),
+        confirm: true,
+    };
+    assert!(runner::handle_dns_command(&client, cmd).await.is_ok());
+}
+
+// ------------------ Zone handler coverage ------------------
+
+#[tokio::test]
+async fn test_handle_zone_list_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [zone_body()]
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::zone::ZoneCommand::List { status: None };
+    assert!(runner::handle_zone_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_zone_show_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [zone_body()]
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::zone::ZoneCommand::Show {
+        zone: "example.com".to_string(),
+    };
+    assert!(runner::handle_zone_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_zone_create_missing_account_errors() {
+    let mock_server = MockServer::start().await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::zone::ZoneCommand::Create {
+        zone: "new.example.com".to_string(),
+        account_id: None,
+    };
+    assert!(runner::handle_zone_command(&client, cmd).await.is_err());
+}
+
+#[tokio::test]
+async fn test_handle_zone_create_with_account_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": zone_body()
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::zone::ZoneCommand::Create {
+        zone: "example.com".to_string(),
+        account_id: Some("acc123".to_string()),
+    };
+    assert!(runner::handle_zone_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_zone_delete_requires_confirm() {
+    let mock_server = MockServer::start().await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::zone::ZoneCommand::Delete {
+        zone_id: "zone123".to_string(),
+        confirm: false,
+    };
+    assert!(runner::handle_zone_command(&client, cmd).await.is_err());
+}
+
+#[tokio::test]
+async fn test_handle_zone_delete_with_confirm_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path("/zones/zone123"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": null
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::zone::ZoneCommand::Delete {
+        zone_id: "zone123".to_string(),
+        confirm: true,
+    };
+    assert!(runner::handle_zone_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_zone_settings_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [zone_body()]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/zones/zone123abc/settings"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [
+                {"id": "ssl", "value": "flexible"},
+                {"id": "security_level", "value": "high"},
+                {"id": "development_mode", "value": "off"},
+                {"id": "ipv6", "value": "on"},
+                {"id": "minify", "value": {"css": "on"}},
+                {"id": "http3", "value": true},
+                {"id": "cache_level", "value": "aggressive"},
+                {"id": "numeric_setting", "value": 42},
+            ]
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::zone::ZoneCommand::Settings {
+        zone: "example.com".to_string(),
+    };
+    assert!(runner::handle_zone_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_zone_update_dispatches_all_settings() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [zone_body()]
+        })))
+        .mount(&mock_server)
+        .await;
+    for setting in [
+        "security_level",
+        "cache_level",
+        "development_mode",
+        "ipv6",
+        "ssl",
+        "always_use_https",
+    ] {
+        Mock::given(method("PATCH"))
+            .and(path(format!("/zones/zone123abc/settings/{}", setting)))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true, "errors": [], "messages": [],
+                "result": {"value": "on"}
+            })))
+            .mount(&mock_server)
+            .await;
+    }
+
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::zone::ZoneCommand::Update {
+        zone: "example.com".to_string(),
+        security_level: Some("high".to_string()),
+        cache_level: Some("aggressive".to_string()),
+        dev_mode: Some("on".to_string()),
+        ipv6: Some("on".to_string()),
+        ssl: Some("flexible".to_string()),
+        always_https: Some("on".to_string()),
+    };
+    assert!(runner::handle_zone_command(&client, cmd).await.is_ok());
+}
+
+// ------------------ Cache handler coverage ------------------
+
+#[tokio::test]
+async fn test_handle_cache_purge_all_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [zone_body()]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/zones/zone123abc/purge_cache"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": {"id": "zone123abc"}
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::cache::CacheCommand::Purge {
+        zone: "example.com".to_string(),
+        all: true,
+        files: None,
+        tags: None,
+        hosts: None,
+        prefixes: None,
+    };
+    assert!(runner::handle_cache_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_cache_purge_no_options_errors() {
+    // No --all/--files/--tags/--hosts/--prefixes -> validation error
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [zone_body()]
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::cache::CacheCommand::Purge {
+        zone: "example.com".to_string(),
+        all: false,
+        files: None,
+        tags: None,
+        hosts: None,
+        prefixes: None,
+    };
+    assert!(runner::handle_cache_command(&client, cmd).await.is_err());
+}
+
+#[tokio::test]
+async fn test_handle_cache_purge_files_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/zones"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [zone_body()]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/zones/zone123abc/purge_cache"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": {"id": "zone123abc"}
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::cache::CacheCommand::Purge {
+        zone: "example.com".to_string(),
+        all: false,
+        files: Some(vec!["https://example.com/a.js".to_string()]),
+        tags: None,
+        hosts: None,
+        prefixes: None,
+    };
+    assert!(runner::handle_cache_command(&client, cmd).await.is_ok());
+}

@@ -126,7 +126,7 @@ fn build_command_json(cmd: &clap::Command) -> serde_json::Value {
     })
 }
 
-async fn handle_dns_command(
+pub async fn handle_dns_command(
     client: &client::CloudflareClient,
     cmd: cli::dns::DnsCommand,
 ) -> Result<()> {
@@ -178,7 +178,7 @@ async fn handle_dns_command(
     }
 }
 
-async fn handle_dns_list(
+pub async fn handle_dns_list(
     client: &client::CloudflareClient,
     zone: &str,
     record_type: Option<String>,
@@ -197,7 +197,7 @@ async fn handle_dns_list(
     Ok(())
 }
 
-async fn handle_dns_show(
+pub async fn handle_dns_show(
     client: &client::CloudflareClient,
     zone: &str,
     record_id: &str,
@@ -209,7 +209,7 @@ async fn handle_dns_show(
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn handle_dns_add(
+pub async fn handle_dns_add(
     client: &client::CloudflareClient,
     zone: &str,
     record_type: String,
@@ -236,7 +236,7 @@ async fn handle_dns_add(
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn handle_dns_update(
+pub async fn handle_dns_update(
     client: &client::CloudflareClient,
     zone: &str,
     record_id: &str,
@@ -261,7 +261,7 @@ async fn handle_dns_update(
     Ok(())
 }
 
-async fn handle_dns_delete(
+pub async fn handle_dns_delete(
     client: &client::CloudflareClient,
     zone: &str,
     record_id: &str,
@@ -275,7 +275,7 @@ async fn handle_dns_delete(
     ops::dns::delete_record(client, &zone_obj.id, record_id).await
 }
 
-async fn handle_dns_import(
+pub async fn handle_dns_import(
     client: &client::CloudflareClient,
     zone: &str,
     file: &str,
@@ -285,7 +285,7 @@ async fn handle_dns_import(
     Ok(())
 }
 
-async fn handle_zone_command(
+pub async fn handle_zone_command(
     client: &client::CloudflareClient,
     cmd: cli::zone::ZoneCommand,
 ) -> Result<()> {
@@ -325,14 +325,14 @@ async fn handle_zone_command(
     }
 }
 
-async fn handle_zone_list(client: &client::CloudflareClient, status: Option<String>) -> Result<()> {
+pub async fn handle_zone_list(client: &client::CloudflareClient, status: Option<String>) -> Result<()> {
     let zones = ops::zone::list_zones(client, status.as_deref()).await?;
     println!("\nZones:\n");
     output::table::print_zones(&zones);
     Ok(())
 }
 
-async fn handle_zone_show(client: &client::CloudflareClient, zone: &str) -> Result<()> {
+pub async fn handle_zone_show(client: &client::CloudflareClient, zone: &str) -> Result<()> {
     let zone_obj = ops::zone::get_zone(client, zone).await?;
     println!("Zone: {}", zone_obj.name);
     println!("  ID: {}", zone_obj.id);
@@ -341,7 +341,7 @@ async fn handle_zone_show(client: &client::CloudflareClient, zone: &str) -> Resu
     Ok(())
 }
 
-async fn handle_zone_create(
+pub async fn handle_zone_create(
     client: &client::CloudflareClient,
     zone: &str,
     account_id: Option<String>,
@@ -353,7 +353,7 @@ async fn handle_zone_create(
     Ok(())
 }
 
-async fn handle_zone_delete(
+pub async fn handle_zone_delete(
     client: &client::CloudflareClient,
     zone_id: &str,
     confirm: bool,
@@ -365,7 +365,7 @@ async fn handle_zone_delete(
     ops::zone::delete_zone(client, zone_id).await
 }
 
-async fn handle_zone_settings(client: &client::CloudflareClient, zone: &str) -> Result<()> {
+pub async fn handle_zone_settings(client: &client::CloudflareClient, zone: &str) -> Result<()> {
     let zone_obj = ops::zone::get_zone(client, zone).await?;
     let settings = ops::zone::get_zone_settings(client, &zone_obj.id).await?;
 
@@ -410,7 +410,7 @@ async fn handle_zone_settings(client: &client::CloudflareClient, zone: &str) -> 
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn handle_zone_update(
+pub async fn handle_zone_update(
     client: &client::CloudflareClient,
     zone: &str,
     security_level: Option<String>,
@@ -437,7 +437,7 @@ async fn handle_zone_update(
     ops::zone::update_zone_settings(client, &zone_obj.id, settings).await
 }
 
-async fn handle_cache_command(
+pub async fn handle_cache_command(
     client: &client::CloudflareClient,
     cmd: cli::cache::CacheCommand,
 ) -> Result<()> {
@@ -460,7 +460,7 @@ async fn handle_cache_command(
     Ok(())
 }
 
-async fn execute_cache_purge(
+pub async fn execute_cache_purge(
     client: &client::CloudflareClient,
     zone_id: &str,
     all: bool,
@@ -494,7 +494,7 @@ async fn execute_cache_purge(
     ))
 }
 
-async fn handle_d1_command(
+pub async fn handle_d1_command(
     client: &client::CloudflareClient,
     cmd: cli::d1::D1Command,
 ) -> Result<()> {
@@ -686,7 +686,7 @@ async fn handle_d1_command(
     }
 }
 
-async fn handle_d1_schema(
+pub async fn handle_d1_schema(
     client: &client::CloudflareClient,
     account_id: &str,
     database_id: &str,
@@ -780,7 +780,7 @@ async fn handle_d1_schema(
 }
 
 /// Resolve a database identifier (name or ID) to a database ID
-async fn resolve_d1_database_id(
+pub async fn resolve_d1_database_id(
     client: &client::CloudflareClient,
     account_id: &str,
     identifier: &str,
@@ -804,7 +804,7 @@ async fn resolve_d1_database_id(
     ))
 }
 
-async fn handle_pages_command(
+pub async fn handle_pages_command(
     client: &client::CloudflareClient,
     cmd: cli::pages::PagesCommand,
 ) -> Result<()> {
@@ -902,7 +902,7 @@ async fn handle_pages_command(
     }
 }
 
-async fn handle_pages_deploy_command(
+pub async fn handle_pages_deploy_command(
     client: &client::CloudflareClient,
     cmd: cli::pages::DeployCommand,
 ) -> Result<()> {
@@ -1004,7 +1004,7 @@ async fn handle_pages_deploy_command(
     }
 }
 
-async fn handle_pages_domain_command(
+pub async fn handle_pages_domain_command(
     client: &client::CloudflareClient,
     cmd: cli::pages::DomainCommand,
 ) -> Result<()> {
@@ -1065,7 +1065,7 @@ async fn handle_pages_domain_command(
     }
 }
 
-async fn handle_r2_command(
+pub async fn handle_r2_command(
     client: &client::CloudflareClient,
     cmd: cli::r2::R2Command,
 ) -> Result<()> {
@@ -1130,7 +1130,7 @@ async fn handle_r2_command(
     }
 }
 
-async fn handle_r2_cors_command(
+pub async fn handle_r2_cors_command(
     client: &client::CloudflareClient,
     cmd: cli::r2::R2CorsCommand,
 ) -> Result<()> {
@@ -1168,7 +1168,7 @@ async fn handle_r2_cors_command(
     }
 }
 
-async fn handle_r2_domain_command(
+pub async fn handle_r2_domain_command(
     client: &client::CloudflareClient,
     cmd: cli::r2::R2DomainCommand,
 ) -> Result<()> {
@@ -1242,7 +1242,7 @@ async fn handle_r2_domain_command(
     }
 }
 
-async fn handle_r2_public_access_command(
+pub async fn handle_r2_public_access_command(
     client: &client::CloudflareClient,
     cmd: cli::r2::R2PublicAccessCommand,
 ) -> Result<()> {
@@ -1275,7 +1275,7 @@ async fn handle_r2_public_access_command(
     }
 }
 
-async fn handle_r2_lifecycle_command(
+pub async fn handle_r2_lifecycle_command(
     client: &client::CloudflareClient,
     cmd: cli::r2::R2LifecycleCommand,
 ) -> Result<()> {
@@ -1301,7 +1301,7 @@ async fn handle_r2_lifecycle_command(
     }
 }
 
-async fn handle_r2_lock_command(
+pub async fn handle_r2_lock_command(
     client: &client::CloudflareClient,
     cmd: cli::r2::R2LockCommand,
 ) -> Result<()> {
@@ -1355,7 +1355,7 @@ async fn handle_r2_lock_command(
     }
 }
 
-async fn handle_r2_sippy_command(
+pub async fn handle_r2_sippy_command(
     client: &client::CloudflareClient,
     cmd: cli::r2::R2SippyCommand,
 ) -> Result<()> {
@@ -1413,7 +1413,7 @@ async fn handle_r2_sippy_command(
     }
 }
 
-async fn handle_r2_notification_command(
+pub async fn handle_r2_notification_command(
     client: &client::CloudflareClient,
     cmd: cli::r2::R2NotificationCommand,
 ) -> Result<()> {
@@ -1479,7 +1479,7 @@ async fn handle_r2_notification_command(
     }
 }
 
-async fn handle_r2_migrate_command(
+pub async fn handle_r2_migrate_command(
     client: &client::CloudflareClient,
     cmd: cli::r2::R2MigrateCommand,
 ) -> Result<()> {
@@ -1578,7 +1578,7 @@ async fn handle_r2_migrate_command(
     }
 }
 
-async fn handle_r2_temp_creds_command(
+pub async fn handle_r2_temp_creds_command(
     client: &client::CloudflareClient,
     cmd: cli::r2::R2TempCredsCommand,
 ) -> Result<()> {
@@ -1610,7 +1610,7 @@ async fn handle_r2_temp_creds_command(
     }
 }
 
-async fn handle_token_command(
+pub async fn handle_token_command(
     client: &client::CloudflareClient,
     cmd: cli::token::TokenCommand,
 ) -> Result<()> {
@@ -1725,7 +1725,7 @@ async fn handle_token_command(
     }
 }
 
-async fn handle_config_command(cmd: cli::config::ConfigCommand) -> Result<()> {
+pub async fn handle_config_command(cmd: cli::config::ConfigCommand) -> Result<()> {
     use cli::config::{ConfigCommand, ProfileCommand};
 
     match cmd {
@@ -1739,7 +1739,7 @@ async fn handle_config_command(cmd: cli::config::ConfigCommand) -> Result<()> {
     }
 }
 
-async fn handle_config_init() -> Result<()> {
+pub async fn handle_config_init() -> Result<()> {
     let config = Config::new("default".to_string());
     config.save()?;
     println!(
@@ -1749,7 +1749,7 @@ async fn handle_config_init() -> Result<()> {
     Ok(())
 }
 
-async fn handle_config_show(profile: Option<String>) -> Result<()> {
+pub async fn handle_config_show(profile: Option<String>) -> Result<()> {
     let loaded = Config::load(profile.as_deref())?;
     let redacted = loaded.redacted();
     println!("Profile configuration:");
@@ -1761,7 +1761,7 @@ async fn handle_config_show(profile: Option<String>) -> Result<()> {
     Ok(())
 }
 
-async fn handle_profile_list() -> Result<()> {
+pub async fn handle_profile_list() -> Result<()> {
     match Config::from_file() {
         Ok(config) => {
             println!("Available profiles:");
@@ -1780,7 +1780,7 @@ async fn handle_profile_list() -> Result<()> {
     Ok(())
 }
 
-async fn handle_profile_add(name: String) -> Result<()> {
+pub async fn handle_profile_add(name: String) -> Result<()> {
     let mut config = Config::from_file().unwrap_or_else(|_| Config::new("default".to_string()));
     let profile = Profile {
         api_token: None,
@@ -1796,7 +1796,7 @@ async fn handle_profile_add(name: String) -> Result<()> {
     Ok(())
 }
 
-async fn handle_profile_set_default(name: String) -> Result<()> {
+pub async fn handle_profile_set_default(name: String) -> Result<()> {
     let mut config = Config::from_file()?;
     if !config.profiles.contains_key(&name) {
         return Err(crate::error::CfadError::config(format!(
