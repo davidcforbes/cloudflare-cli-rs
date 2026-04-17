@@ -1979,3 +1979,327 @@ async fn test_handle_r2_domain_delete_requires_confirm() {
     });
     assert!(runner::handle_r2_command(&client, cmd).await.is_err());
 }
+
+// ------------------ R2 sippy enable, notifications create, migrate create, temp-creds ------------------
+
+#[tokio::test]
+async fn test_handle_r2_sippy_enable_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/accounts/acc1/r2/buckets/b1/sippy"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": { "enabled": true, "provider": "aws",
+                        "bucket": "src-bucket", "region": "us-east-1" }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::r2::R2Command::Sippy(cli::r2::R2SippyCommand::Enable {
+        account_id: Some("acc1".to_string()),
+        bucket: "b1".to_string(),
+        provider: "aws".to_string(),
+        source_bucket: "src-bucket".to_string(),
+        region: Some("us-east-1".to_string()),
+        access_key_id: Some("AK".to_string()),
+        secret_access_key: Some("SK".to_string()),
+    });
+    assert!(runner::handle_r2_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_r2_notifications_create_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path(
+            "/accounts/acc1/event_notifications/r2/b1/configuration/queues/q1",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": { "queueId": "q1", "rules": [{ "actions": ["PutObject"], "prefix": null, "suffix": null }] }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::r2::R2Command::Notifications(cli::r2::R2NotificationCommand::Create {
+        account_id: Some("acc1".to_string()),
+        bucket: "b1".to_string(),
+        queue_id: "q1".to_string(),
+        events: vec!["object:create".to_string()],
+        prefix: None,
+        suffix: None,
+    });
+    assert!(runner::handle_r2_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_r2_migrate_create_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/accounts/acc1/slurper/jobs"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": { "id": "j1", "status": "queued",
+                        "filesMigrated": 0, "bytesMigrated": 0,
+                        "filesSkipped": 0, "filesFailed": 0 }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::r2::R2Command::Migrate(cli::r2::R2MigrateCommand::Create {
+        account_id: Some("acc1".to_string()),
+        source_provider: "aws".to_string(),
+        source_bucket: "src-bucket".to_string(),
+        source_region: Some("us-east-1".to_string()),
+        target_bucket: "dst-bucket".to_string(),
+        access_key_id: "AK".to_string(),
+        secret_access_key: "SK".to_string(),
+    });
+    assert!(runner::handle_r2_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_r2_temp_creds_create_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/accounts/acc1/r2/temp-access-credentials"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": { "accessKeyId": "AK", "secretAccessKey": "SK",
+                        "sessionToken": "ST", "expiration": "2026-01-02T00:00:00Z" }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::r2::R2Command::TempCreds(cli::r2::R2TempCredsCommand::Create {
+        account_id: Some("acc1".to_string()),
+        bucket: "b1".to_string(),
+        permission: "read".to_string(),
+        ttl: 3600,
+        prefix: None,
+    });
+    assert!(runner::handle_r2_command(&client, cmd).await.is_ok());
+}
+
+// ------------------ Token create/update/roll ------------------
+
+#[tokio::test]
+async fn test_handle_token_create_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/user/tokens"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": { "id": "tok1", "name": "Test", "status": "active", "value": "secret" }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::token::TokenCommand::Create {
+        name: "Test".to_string(),
+        permissions: vec!["pg1".to_string()],
+        resources: "com.cloudflare.api.account.*".to_string(),
+        expires: None,
+        not_before: None,
+    };
+    assert!(runner::handle_token_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_token_update_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/user/tokens/tok1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": { "id": "tok1", "name": "Renamed", "status": "active" }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::token::TokenCommand::Update {
+        token_id: "tok1".to_string(),
+        name: Some("Renamed".to_string()),
+        status: None,
+        expires: None,
+    };
+    assert!(runner::handle_token_command(&client, cmd).await.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_token_roll_requires_confirm() {
+    let mock_server = MockServer::start().await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::token::TokenCommand::Roll {
+        token_id: "tok1".to_string(),
+        confirm: false,
+    };
+    assert!(runner::handle_token_command(&client, cmd).await.is_err());
+}
+
+#[tokio::test]
+async fn test_handle_token_roll_confirmed_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/user/tokens/tok1/value"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": { "id": "tok1", "name": "Test", "status": "active", "value": "new_value_abc" }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::token::TokenCommand::Roll {
+        token_id: "tok1".to_string(),
+        confirm: true,
+    };
+    assert!(runner::handle_token_command(&client, cmd).await.is_ok());
+}
+
+// ------------------ D1 query-file and import (tempfile-based) ------------------
+
+fn write_temp_file(content: &str, suffix: &str) -> std::path::PathBuf {
+    let mut path = std::env::temp_dir();
+    let unique = format!(
+        "cfad-test-{}-{}.{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos(),
+        suffix
+    );
+    path.push(unique);
+    std::fs::write(&path, content).unwrap();
+    path
+}
+
+#[tokio::test]
+async fn test_handle_d1_query_file_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/accounts/acc1/d1/database"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": [d1_db_body("db-1", "my-db")]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/accounts/acc1/d1/database/db-1/query"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": [{ "success": true, "results": [], "meta": {} }]
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let sql_file = write_temp_file("SELECT 1;", "sql");
+    let cmd = cli::d1::D1Command::QueryFile {
+        account_id: Some("acc1".to_string()),
+        database_id: "db-1".to_string(),
+        file: sql_file.to_string_lossy().into_owned(),
+        raw: false,
+        format: "json".to_string(),
+    };
+    assert!(runner::handle_d1_command(&client, cmd).await.is_ok());
+    let _ = std::fs::remove_file(sql_file);
+}
+
+#[tokio::test]
+async fn test_handle_d1_import_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/accounts/acc1/d1/database"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": [d1_db_body("db-1", "my-db")]
+        })))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/accounts/acc1/d1/database/db-1/import"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": { "status": "complete", "num_queries": 1, "success": true }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let sql_file = write_temp_file("INSERT INTO foo VALUES(1);", "sql");
+    let cmd = cli::d1::D1Command::Import {
+        account_id: Some("acc1".to_string()),
+        database_id: "db-1".to_string(),
+        file: sql_file.to_string_lossy().into_owned(),
+    };
+    assert!(runner::handle_d1_command(&client, cmd).await.is_ok());
+    let _ = std::fs::remove_file(sql_file);
+}
+
+// ------------------ R2 cors set, r2 lifecycle set, r2 domain update ------------------
+
+#[tokio::test]
+async fn test_handle_r2_cors_set_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/accounts/acc1/r2/buckets/b1/cors"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": null
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cors_json = r#"[{"allowedOrigins":["*"],"allowedMethods":["GET"],"allowedHeaders":[],"exposeHeaders":[],"maxAgeSeconds":60}]"#;
+    let file = write_temp_file(cors_json, "json");
+    let cmd = cli::r2::R2Command::Cors(cli::r2::R2CorsCommand::Set {
+        account_id: Some("acc1".to_string()),
+        bucket: "b1".to_string(),
+        file: file.to_string_lossy().into_owned(),
+    });
+    assert!(runner::handle_r2_command(&client, cmd).await.is_ok());
+    let _ = std::fs::remove_file(file);
+}
+
+#[tokio::test]
+async fn test_handle_r2_lifecycle_set_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/accounts/acc1/r2/buckets/b1/lifecycle"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [], "result": null
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let lc_json = r#"{"rules":[{"id":"r1","enabled":true,"conditions":{},"actions":{"deleteAfterDays":30}}]}"#;
+    let file = write_temp_file(lc_json, "json");
+    let cmd = cli::r2::R2Command::Lifecycle(cli::r2::R2LifecycleCommand::Set {
+        account_id: Some("acc1".to_string()),
+        bucket: "b1".to_string(),
+        file: file.to_string_lossy().into_owned(),
+    });
+    assert!(runner::handle_r2_command(&client, cmd).await.is_ok());
+    let _ = std::fs::remove_file(file);
+}
+
+#[tokio::test]
+async fn test_handle_r2_domain_update_dispatches() {
+    let mock_server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path(
+            "/accounts/acc1/r2/buckets/b1/domains/custom/cdn.example.com",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "success": true, "errors": [], "messages": [],
+            "result": { "domain": "cdn.example.com", "enabled": true, "status": "active" }
+        })))
+        .mount(&mock_server)
+        .await;
+    let client = mock_client(&mock_server).await;
+    let cmd = cli::r2::R2Command::Domain(cli::r2::R2DomainCommand::Update {
+        account_id: Some("acc1".to_string()),
+        bucket: "b1".to_string(),
+        domain: "cdn.example.com".to_string(),
+        enabled: Some(true),
+        min_tls: None,
+    });
+    assert!(runner::handle_r2_command(&client, cmd).await.is_ok());
+}
