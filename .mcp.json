@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "serena": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "uvx",
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena",
+        "start-mcp-server"
+      ]
+    },
+    "cloudflare": {
+      "type": "http",
+      "url": "https://bindings.mcp.cloudflare.com/mcp"
+    }
+  }
+}

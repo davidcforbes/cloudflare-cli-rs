@@ -41,6 +41,10 @@ export-state/
 # Process semaphore slot files (runtime concurrency limiting)
 sem/
 
+# Local Dolt embedded database + backups (per-machine runtime state, large)
+embeddeddolt/
+backup/
+
 # NOTE: Do NOT add negation patterns (e.g., !issues.jsonl) here.
 # They would override fork protection in .git/info/exclude, allowing
 # contributors to accidentally commit upstream issue databases.
